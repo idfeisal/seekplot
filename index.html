@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Strategy Crisis RPG</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <link rel="stylesheet" href="game.css">
+</head>
+<body>
+  <div id="game-container">
+    <h1>Seek Plot </h1>
+    <label for="genre">Select Genre:</label>
+    <select id="genre">
+      <option value="medieval">Medieval</option>
+      <option value="modern">Modern</option>
+      <option value="alternate_history">Alternate History</option>
+    </select>
+    <h3>Submit Policy Proposal (50 words max)</h3>
+    <textarea id="policy" rows="4" maxlength="300" placeholder="E.g., Allocate 550 units to us, 450 to opponents..."></textarea>
+    <h3>Opposing Faction Proposal</h3>
+    <p id="opponent-proposal">Demand 600 units, 400 to you. Fund $6M for recovery. Fairness via joint committee.</p>
+    <label for="vote">Vote:</label>
+    <select id="vote">
+      <option value="approve">Approve</option>
+      <option value="reject">Reject</option>
+    </select>
+    <textarea id="vote-reason" rows="2" maxlength="100" placeholder="Reason for vote (one sentence)"></textarea>
+    <textarea id="comment" rows="2" maxlength="100" placeholder="Comment on opposing proposal (one sentence)"></textarea>
+    <button onclick="submitTurn()">Submit Turn</button>
+    <h3>Game Metrics</h3>
+    <p id="metrics">Economy: 100% | Stability: 100% | Public Opinion: 50%</p>
+    <h3>Game Output</h3>
+    <div id="output"></div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
