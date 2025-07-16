@@ -6,7 +6,7 @@ function setup() {
   createCanvas(0, 0); // No canvas needed, using p5.js for structure
 }
 
-function submitTurn() {
+async function submitTurn() {
   const policy = document.getElementById('policy').value;
   const vote = document.getElementById('vote').value;
   const reason = document.getElementById('vote-reason').value;
@@ -22,7 +22,7 @@ function submitTurn() {
     return;
   }
 
-  let response = simulateAIResponse(policy, vote, comment, genre);
+  let response = await simulateAIResponse(policy, vote, comment, genre);
   updateMetrics(vote, policy);
   displayOutput(policy, vote, reason, comment, response);
 
@@ -36,16 +36,24 @@ function submitTurn() {
   }
 }
 
-function simulateAIResponse(policy, vote, comment, genre) {
-  const narratives = {
-    medieval: `The rival kingdom demands fair terms, wary of your ${policy.includes('neutral') ? 'neutral mediators' : 'self-serving policies'}.`,
-    modern: `The opposing nation critiques your ${policy.includes('neutral') ? 'balanced approach' : 'resource-heavy proposal'}, seeking compromise.`,
-    alternate_history: `The faction from the shattered timeline questions your ${policy.includes('neutral') ? 'diplomatic intent' : 'aggressive stance'}.`
-  };
-  let response = narratives[genre] || narratives.modern;
-  if (vote === 'reject') response += ' Your rejection escalates tensions.';
-  if (comment.includes('500/500')) response += ' They consider the 500/500 split but demand oversight.';
-  return response;
+async function simulateAIResponse(policy, vote, comment, genre) {
+  try {
+    const apiUrl = 'https://api.openai.com/v1/chat/completions'; // Replace with your API endpoint, e.g., 'https://api.x.ai/v1/generate'
+    const apiKey = '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'; // Replace with your API key (use proxy for security)
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}` // Remove if using a proxy
+      },
+      body: JSON.stringify({ policy, vote, comment, genre })
+    });
+    const data = await response.json();
+    return data.response || 'API error: No response received.';
+  } catch (error) {
+    console.error('API call failed:', error);
+    return `Fallback: The ${genre} faction responds to your ${policy.includes('neutral') ? 'neutral' : 'bold'} policy.`;
+  }
 }
 
 function updateMetrics(vote, policy) {
