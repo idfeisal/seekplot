@@ -1,37 +1,186 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <title>Strategy Crisis RPG</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
-  <link rel="stylesheet" href="game.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interaktive Story Engine</title>
+  <!-- TailwindCSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
 </head>
-<body>
-  <div id="game-container">
-    <h1>Seek Plot </h1>
-    <label for="genre">Select Genre:</label>
-    <select id="genre">
-      <option value="medieval">Medieval</option>
-      <option value="modern">Modern</option>
-      <option value="death_note">Death Note</option>
-    </select>
-    <h3>Submit Policy Proposal (50 words max)</h3>
-    <textarea id="policy" rows="4" maxlength="300" placeholder="E.g., Allocate 550 units to us, 450 to opponents..."></textarea>
-    <h3>Opposing Faction Proposal</h3>
-    <p id="opponent-proposal">Demand 600 units, 400 to you. Fund $6M for recovery. Fairness via joint committee.</p>
-    <label for="vote">Vote:</label>
-    <select id="vote">
-      <option value="approve">Approve</option>
-      <option value="reject">Reject</option>
-    </select>
-    <textarea id="vote-reason" rows="2" maxlength="100" placeholder="Reason for vote (one sentence)"></textarea>
-    <textarea id="comment" rows="2" maxlength="100" placeholder="Comment on opposing proposal (one sentence)"></textarea>
-    <button onclick="submitTurn()">Submit Turn</button>
-    <h3>Game Metrics</h3>
-    <p id="metrics">Economy: 100% | Stability: 100% | Public Opinion: 50%</p>
-    <h3>Game Output</h3>
-    <div id="output"></div>
-  </div>
-  <script src="game.js"></script>
+<body class="bg-gray-100 min-h-screen p-4">
+  <div id="root"></div>
+
+  <script type="text/javascript">
+    const { useState, useEffect } = React;
+
+    function App() {
+      const [story, setStory] = useState(() => {
+        const saved = localStorage.getItem("storyData");
+        return saved ? JSON.parse(saved) : {
+          start: "intro",
+          scenes: {
+            intro: { text: "Willkommen! Erstelle oder spiele deine Story.", choices: [] }
+          }
+        };
+      });
+
+      const [currentScene, setCurrentScene] = useState(story.start);
+      const [tab, setTab] = useState("play");
+
+      useEffect(() => {
+        localStorage.setItem("storyData", JSON.stringify(story));
+      }, [story]);
+
+      const scene = story.scenes[currentScene] || { text: "Unbekannte Szene", choices: [] };
+
+      function addScene(id) {
+        if (!id || story.scenes[id]) return;
+        setStory(s => ({
+          ...s,
+          scenes: { ...s.scenes, [id]: { text: "Neue Szene", choices: [] } }
+        }));
+      }
+
+      function updateScene(id, key, value) {
+        setStory(s => ({
+          ...s,
+          scenes: {
+            ...s.scenes,
+            [id]: { ...s.scenes[id], [key]: value }
+          }
+        }));
+      }
+
+      function addChoice(id) {
+        setStory(s => ({
+          ...s,
+          scenes: {
+            ...s.scenes,
+            [id]: {
+              ...s.scenes[id],
+              choices: [...s.scenes[id].choices, { text: "Neue Wahl", next: s.start }]
+            }
+          }
+        }));
+      }
+
+      function updateChoice(sceneId, index, key, value) {
+        const updatedChoices = [...story.scenes[sceneId].choices];
+        updatedChoices[index][key] = value;
+        setStory(s => ({
+          ...s,
+          scenes: { ...s.scenes, [sceneId]: { ...s.scenes[sceneId], choices: updatedChoices } }
+        }));
+      }
+
+      function importStory(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const data = JSON.parse(reader.result);
+            setStory(data);
+            setCurrentScene(data.start);
+          } catch {
+            alert("Ungültige Datei");
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function exportStory() {
+        const blob = new Blob([JSON.stringify(story, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "story.json";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      return (
+        React.createElement("div", { className: "max-w-3xl mx-auto bg-white p-4 rounded shadow" },
+          // Tabs
+          React.createElement("div", { className: "flex mb-4 gap-2" },
+            ["play", "edit"].map(t =>
+              React.createElement("button", {
+                key: t,
+                onClick: () => setTab(t),
+                className: `px-4 py-2 rounded ${tab === t ? "bg-blue-500 text-white" : "bg-gray-200"}`
+              }, t === "play" ? "Spielen" : "Editor")
+            ),
+            React.createElement("input", { type: "file", accept: ".json", onChange: importStory, className: "ml-auto" }),
+            React.createElement("button", { onClick: exportStory, className: "bg-green-500 text-white px-4 py-2 rounded" }, "Exportieren")
+          ),
+
+          // Play Tab
+          tab === "play" &&
+            React.createElement("div", null,
+              React.createElement("p", { className: "mb-4" }, scene.text),
+              scene.choices.map((c, i) =>
+                React.createElement("button", {
+                  key: i,
+                  onClick: () => setCurrentScene(c.next),
+                  className: "block w-full bg-blue-500 text-white px-4 py-2 mb-2 rounded"
+                }, c.text)
+              )
+            ),
+
+          // Edit Tab
+          tab === "edit" &&
+            React.createElement("div", null,
+              React.createElement("div", { className: "mb-4" },
+                React.createElement("label", null, "Startszene: "),
+                React.createElement("input", {
+                  value: story.start,
+                  onChange: e => setStory({ ...story, start: e.target.value }),
+                  className: "border p-1 ml-2"
+                }),
+                React.createElement("button", {
+                  onClick: () => addScene(prompt("Neue Szenen-ID:")),
+                  className: "ml-2 bg-blue-500 text-white px-2 py-1 rounded"
+                }, "Szene hinzufügen")
+              ),
+              Object.keys(story.scenes).map(id =>
+                React.createElement("div", { key: id, className: "border p-2 mb-2" },
+                  React.createElement("h2", { className: "font-bold" }, `Szene: ${id}`),
+                  React.createElement("textarea", {
+                    value: story.scenes[id].text,
+                    onChange: e => updateScene(id, "text", e.target.value),
+                    className: "border w-full p-1 mb-2"
+                  }),
+                  React.createElement("button", {
+                    onClick: () => addChoice(id),
+                    className: "bg-gray-300 px-2 py-1 rounded mb-2"
+                  }, "Wahl hinzufügen"),
+                  story.scenes[id].choices.map((c, idx) =>
+                    React.createElement("div", { key: idx, className: "flex gap-2 mb-1" },
+                      React.createElement("input", {
+                        value: c.text,
+                        onChange: e => updateChoice(id, idx, "text", e.target.value),
+                        placeholder: "Wahl-Text",
+                        className: "border p-1 flex-1"
+                      }),
+                      React.createElement("input", {
+                        value: c.next,
+                        onChange: e => updateChoice(id, idx, "next", e.target.value),
+                        placeholder: "Nächste Szene",
+                        className: "border p-1 flex-1"
+                      })
+                    )
+                  )
+                )
+              )
+            )
+        )
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+  </script>
 </body>
 </html>
