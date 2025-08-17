@@ -4,31 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Interaktive Story Engine mit KI</title>
-  <style>
-    /* Kompiliertes Tailwind CSS (Basis, reduziert für Demo-Zwecke) */
-    body { font-family: sans-serif; background-color: #f3f4f6; margin:0; padding:1rem; }
-    .container { max-width: 800px; margin: auto; background: #fff; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);}
-    .flex { display: flex; }
-    .gap-2 { gap: 0.5rem; }
-    .mb-2 { margin-bottom: 0.5rem; }
-    .mb-4 { margin-bottom: 1rem; }
-    .px-4 { padding-left: 1rem; padding-right: 1rem; }
-    .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-    .rounded { border-radius: 0.25rem; }
-    .bg-blue-500 { background-color: #3b82f6; }
-    .bg-gray-200 { background-color: #e5e7eb; }
-    .text-white { color: white; }
-    .choice-button, .action-button, .generate-button { margin-top: 0.25rem; padding:0.5rem 1rem; border:none; border-radius:0.25rem; cursor:pointer; }
-    .choice-button { background-color:#3b82f6; color:white; display:block; margin-bottom:0.25rem; width:100%; text-align:left; }
-    .action-button { background-color:#6b7280; color:white; margin-right:0.25rem; }
-    .delete-button { background-color:#ef4444; }
-    .textarea, .editor-input { width:100%; padding:0.5rem; border:1px solid #d1d5db; border-radius:0.25rem; margin-bottom:0.25rem; }
-  </style>
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
 </head>
 <body>
-  <div id="root" class="container"></div>
+  <div id="root"></div>
 
   <script type="text/javascript">
     const { useState, useEffect } = React;
@@ -107,33 +87,32 @@
       }
 
       return React.createElement("div",null,
-        React.createElement("div",{className:"flex mb-4 gap-2"},
+        React.createElement("div",null,
           ["play","edit","generate"].map(t=>React.createElement("button",{
-            key:t, onClick:()=>setTab(t),
-            className:`px-4 py-2 rounded ${tab===t?"bg-blue-500 text-white":"bg-gray-200"}`
-          }, t==="play"?"Spielen":t==="edit"?"Editor":"KI-Generieren")),
+            key:t, onClick:()=>setTab(t)
+          }, t==="play"?"Spielen":t==="edit"?"Editor":"KI-Generieren"))
         ),
 
         tab==="play" && React.createElement("div",null,
           React.createElement("p",null,scene.text),
-          scene.choices.map((c,i)=>React.createElement("button",{key:i,onClick:()=>setCurrentScene(c.next),className:"choice-button"},c.text))
+          scene.choices.map((c,i)=>React.createElement("button",{key:i,onClick:()=>setCurrentScene(c.next)},c.text))
         ),
 
         tab==="edit" && React.createElement("div",null,
-          React.createElement("input",{value:newSceneId,onChange:e=>setNewSceneId(e.target.value),placeholder:"Neue Szene-ID",className:"editor-input"}),
-          React.createElement("button",{onClick:addScene,className:"action-button"},"Szene hinzufügen"),
-          Object.keys(story.scenes).map(id=>React.createElement("div",{key:id,className:"mb-2"},
+          React.createElement("input",{value:newSceneId,onChange:e=>setNewSceneId(e.target.value),placeholder:"Neue Szene-ID"}),
+          React.createElement("button",{onClick:addScene},"Szene hinzufügen"),
+          Object.keys(story.scenes).map(id=>React.createElement("div",{key:id},
             React.createElement("h3",null,id),
-            React.createElement("textarea",{value:story.scenes[id].text,onChange:e=>updateScene(id,e.target.value),className:"textarea"}),
-            React.createElement("input",{placeholder:"Antworttext",id:`choice-text-${id}`,className:"editor-input"}),
-            React.createElement("input",{placeholder:"Nächste Szene-ID",id:`choice-next-${id}`,className:"editor-input"}),
-            React.createElement("button",{onClick:()=>{const t=document.getElementById(`choice-text-${id}`).value; const n=document.getElementById(`choice-next-${id}`).value; addChoice(id,t,n)},className:"action-button"},"Antwort hinzufügen"),
-            React.createElement("button",{onClick:()=>deleteScene(id),className:"action-button delete-button"},"Szene löschen")
+            React.createElement("textarea",{value:story.scenes[id].text,onChange:e=>updateScene(id,e.target.value)}),
+            React.createElement("input",{placeholder:"Antworttext",id:`choice-text-${id}`}),
+            React.createElement("input",{placeholder:"Nächste Szene-ID",id:`choice-next-${id}`}),
+            React.createElement("button",{onClick:()=>{const t=document.getElementById(`choice-text-${id}`).value; const n=document.getElementById(`choice-next-${id}`).value; addChoice(id,t,n)}},"Antwort hinzufügen"),
+            React.createElement("button",{onClick:()=>deleteScene(id)},"Szene löschen")
           )),
 
         tab==="generate" && React.createElement("div",null,
-          React.createElement("textarea",{value:prompt,onChange:e=>setPrompt(e.target.value),placeholder:"Kundenwunsch z.B. 'Fantasy mit Drachen'",className:"textarea"}),
-          React.createElement("button",{onClick:generateStory,disabled:generating,className:"generate-button"} , generating?"Generiere...":"Story generieren")
+          React.createElement("textarea",{value:prompt,onChange:e=>setPrompt(e.target.value),placeholder:"Kundenwunsch z.B. 'Fantasy mit Drachen'"}),
+          React.createElement("button",{onClick:generateStory,disabled:generating} , generating?"Generiere...":"Story generieren")
         )
       );
     }
