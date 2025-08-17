@@ -37,36 +37,82 @@
 
       const scene = story.scenes[currentScene] || { text: "Unbekannte Szene", choices: [] };
 
-      // ... (restliche Funktionen wie addScene, deleteScene, updateScene, addChoice, etc. aus dem vorherigen Code bleiben gleich)
+      function addScene() {
+        if (!newSceneId) { alert("Bitte gib eine Szene-ID ein."); return; }
+        setStory(prev => ({
+          ...prev,
+          scenes: { ...prev.scenes, [newSceneId]: { text: "", choices: [] } }
+        }));
+        setNewSceneId("");
+      }
+
+      function deleteScene(sceneId) {
+        if (sceneId === story.start) { alert("Die Startszene kann nicht gelöscht werden."); return; }
+        const newScenes = { ...story.scenes };
+        delete newScenes[sceneId];
+        setStory({ ...story, scenes: newScenes });
+        if (currentScene === sceneId) setCurrentScene(story.start);
+      }
+
+      function updateScene(sceneId, text) {
+        setStory(prev => ({
+          ...prev,
+          scenes: { ...prev.scenes, [sceneId]: { ...prev.scenes[sceneId], text } }
+        }));
+      }
+
+      function addChoice(sceneId, choiceText, nextScene) {
+        if (!choiceText || !nextScene) { alert("Bitte gib Text und nächste Szene ein."); return; }
+        setStory(prev => ({
+          ...prev,
+          scenes: {
+            ...prev.scenes,
+            [sceneId]: {
+              ...prev.scenes[sceneId],
+              choices: [...(prev.scenes[sceneId].choices || []), { text: choiceText, next: nextScene }]
+            }
+          }
+        }));
+      }
 
       async function generateStory() {
-        if (!prompt) {
-          alert("Bitte gib einen Kundenwunsch ein.");
-          return;
-        }
+        if (!prompt) { alert("Bitte gib einen Kundenwunsch ein."); return; }
         setGenerating(true);
+
         try {
-          // Placeholder für xAI Grok API-Aufruf
-          // Ersetze mit echtem API-Key und Endpoint (siehe https://x.ai/api)
-          const response = await fetch('https://api.x.ai/v1/chat/completions', {  // Beispiel-Endpoint (kompatibel mit OpenAI)
-            method: 'POST',
+          const apiKey = "DEIN_OPENAI_API_KEY_HIER"; // <-- Trage hier deinen Key ein
+
+          const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer DEIN_API_KEY_HIER'  // Hole von https://console.x.ai/
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-              model: 'grok-4',  // Oder grok-3-mini für günstiger
-              messages: [{ role: 'user', content: `Generiere eine interaktive Geschichte als JSON: {start: "intro", scenes: {intro: {text: "...", choices: [{text: "...", next: "..."}]}}} basierend auf: ${prompt}` }]
+              model: "gpt-4o-mini",
+              messages: [{
+                role: "user",
+                content: `Generiere eine interaktive Geschichte als JSON: 
+                  {start: "intro", scenes: {intro: {text: "...", choices: [{text: "...", next: "..."}]}}} 
+                  basierend auf: ${prompt}`
+              }],
+              temperature: 0.7,
+              max_tokens: 1000
             })
           });
+
+          if (!response.ok) throw new Error(`HTTP Fehler: ${response.status}`);
           const data = await response.json();
-          const generatedStory = JSON.parse(data.choices[0].message.content);  // Angenommen, API gibt JSON zurück
+
+          if (!data.choices || !data.choices[0]?.message?.content) throw new Error("Keine gültige Antwort von OpenAI");
+
+          const generatedStory = JSON.parse(data.choices[0].message.content);
           setStory(generatedStory);
           setCurrentScene(generatedStory.start);
           alert("Story generiert!");
         } catch (error) {
           console.error(error);
-          // Mock-Fallback für Tests
+          // Mock-Fallback
           const mockStory = {
             start: "intro",
             scenes: {
@@ -78,12 +124,13 @@
           setCurrentScene(mockStory.start);
           alert("Mock-Story generiert (API-Fehler).");
         }
+
         setGenerating(false);
       }
 
       return (
         React.createElement("div", { className: "max-w-3xl mx-auto bg-white p-4 rounded shadow" },
-          // Tabs erweitert um "KI-Generieren"
+          // Tabs
           React.createElement("div", { className: "flex mb-4 gap-2" },
             ["play", "edit", "generate"].map(t =>
               React.createElement("button", {
@@ -92,32 +139,75 @@
                 className: `px-4 py-2 rounded ${tab === t ? "bg-blue-500 text-white" : "bg-gray-200"}`
               }, t === "play" ? "Spielen" : t === "edit" ? "Editor" : "KI-Generieren")
             ),
-            // ... (Import/Export bleiben gleich)
+            React.createElement("button", {
+              onClick: () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(story));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", "story.json");
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+              },
+              className: "ml-auto px-4 py-2 bg-green-500 text-white rounded"
+            }, "Export"),
+            React.createElement("input", {
+              type: "file",
+              accept: ".json",
+              onChange: e => {
+                const fileReader = new FileReader();
+                fileReader.onload = event => {
+                  const importedStory = JSON.parse(event.target.result);
+                  setStory(importedStory);
+                  setCurrentScene(importedStory.start);
+                };
+                fileReader.readAsText(e.target.files[0]);
+              },
+              className: "ml-2"
+            })
           ),
 
-          // Play und Edit Tabs bleiben gleich
-
-          // Neuer Generate Tab
-          tab === "generate" &&
+          // Play Tab
+          tab === "play" &&
             React.createElement("div", null,
-              React.createElement("h2", { className: "font-bold mb-2" }, "Generiere Story basierend auf Kundenwunsch"),
-              React.createElement("textarea", {
-                value: prompt,
-                onChange: e => setPrompt(e.target.value),
-                placeholder: "z.B. 'Eine Fantasy-Geschichte mit einem Drachen und einem mutigen Helden'",
-                className: "border w-full p-2 mb-2 h-24"
-              }),
-              React.createElement("button", {
-                onClick: generateStory,
-                disabled: generating,
-                className: "bg-purple-500 text-white px-4 py-2 rounded"
-              }, generating ? "Generiere..." : "Story generieren")
-            )
-        )
-      );
-    }
+              React.createElement("p", { className: "mb-4" }, scene.text),
+              scene.choices.map((choice, idx) =>
+                React.createElement("button", {
+                  key: idx,
+                  onClick: () => setCurrentScene(choice.next),
+                  className: "block mb-2 px-4 py-2 bg-gray-300 rounded"
+                }, choice.text)
+              )
+            ),
 
-    ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
-  </script>
-</body>
-</html>
+          // Edit Tab
+          tab === "edit" &&
+            React.createElement("div", null,
+              React.createElement("h2", { className: "font-bold mb-2" }, "Editor"),
+              React.createElement("div", { className: "mb-2" },
+                React.createElement("input", {
+                  value: newSceneId,
+                  onChange: e => setNewSceneId(e.target.value),
+                  placeholder: "Neue Szene-ID",
+                  className: "border p-1 mr-2"
+                }),
+                React.createElement("button", { onClick: addScene, className: "px-2 py-1 bg-blue-500 text-white rounded" }, "Szene hinzufügen")
+              ),
+              Object.keys(story.scenes).map(sceneId =>
+                React.createElement("div", { key: sceneId, className: "border p-2 mb-2 rounded" },
+                  React.createElement("h3", null, sceneId),
+                  React.createElement("textarea", {
+                    value: story.scenes[sceneId].text,
+                    onChange: e => updateScene(sceneId, e.target.value),
+                    className: "w-full border p-1 mb-1"
+                  }),
+                  React.createElement("div", { className: "flex gap-2 mb-1" },
+                    React.createElement("input", { placeholder: "Antworttext", id: `choice-text-${sceneId}`, className: "border p-1 flex-1" }),
+                    React.createElement("input", { placeholder: "Nächste Szene-ID", id: `choice-next-${sceneId}`, className: "border p-1 flex-1" }),
+                    React.createElement("button", {
+                      onClick: () => {
+                        const text = document.getElementById(`choice-text-${sceneId}`).value;
+                        const next = document.getElementById(`choice-next-${sceneId}`).value;
+                        addChoice(sceneId, text, next);
+                      },
+                      className
