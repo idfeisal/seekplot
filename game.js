@@ -1,8 +1,3 @@
-// Load environment variables (for local development)
-if (typeof dotenv !== 'undefined') {
-  dotenv.config();
-}
-
 const { useState, useEffect } = React;
 
 function App() {
@@ -75,78 +70,54 @@ function App() {
     }));
   }
 
+  // ✅ Fixed version of generateStory
   async function generateStory() {
     if (!prompt) {
       alert("Bitte gib einen Kundenwunsch ein.");
       return;
     }
 
-    const apiKey = process.env.XAI_API_KEY;
-    if (!apiKey) {
-      alert("API-Schlüssel fehlt. Bitte füge XAI_API_KEY in die .env-Datei hinzu.");
-      return;
-    }
-
     setGenerating(true);
 
-    const maxRetries = 3;
-    let attempt = 0;
+    try {
+      const response = await fetch("http://localhost:3000/generate-story", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
 
-    while (attempt < maxRetries) {
-      try {
-        const response = await fetch('https://api.x.ai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: 'grok-4',
-            messages: [{
-              role: 'user',
-              content: `Generiere eine interaktive Geschichte als JSON: {start: "intro", scenes: {intro: {text: "...", choices: [{text: "...", next: "..."}]}}} basierend auf: ${prompt}`
-            }],
-            temperature: 0.7,
-            max_tokens: 1000
-          })
-        });
-
-        if (response.status === 429) {
-          // Handle rate limiting with exponential backoff
-          attempt++;
-          const delay = Math.pow(2, attempt) * 1000 + Math.random() * 100;
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-
-        if (!response.ok) {
-          throw new Error(`HTTP Fehler: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const generatedStory = JSON.parse(data.choices[0].message.content);
-        setStory(generatedStory);
-        setCurrentScene(generatedStory.start);
-        alert("Story generiert!");
-        break;
-      } catch (error) {
-        console.error("API Fehler:", error);
-        if (attempt === maxRetries - 1) {
-          // Fallback to mock story on final failure
-          const mockStory = {
-            start: "intro",
-            scenes: {
-              intro: { text: `Generierte Story basierend auf: ${prompt}`, choices: [{ text: "Weiter", next: "ende" }] },
-              ende: { text: "Ende der Geschichte.", choices: [] }
-            }
-          };
-          setStory(mockStory);
-          setCurrentScene(mockStory.start);
-          alert("Mock-Story generiert (API-Fehler).");
-        }
+      if (!response.ok) {
+        throw new Error(`HTTP Fehler: ${response.status}`);
       }
-      attempt++;
+
+      const data = await response.json();
+
+      if (data.story) {
+        setStory(data.story);
+        setCurrentScene(data.story.start);
+        alert("Story generiert!");
+      } else {
+        throw new Error(data.error || "Ungültige Antwort vom Server");
+      }
+    } catch (error) {
+      console.error("API Fehler:", error);
+
+      // fallback mock story
+      const mockStory = {
+        start: "intro",
+        scenes: {
+          intro: {
+            text: `Generierte Story basierend auf: ${prompt}`,
+            choices: [{ text: "Weiter", next: "ende" }],
+          },
+          ende: { text: "Ende der Geschichte.", choices: [] },
+        },
+      };
+      setStory(mockStory);
+      setCurrentScene(mockStory.start);
+      alert("Mock-Story generiert (API-Fehler).");
     }
+
     setGenerating(false);
   }
 
