@@ -46,7 +46,8 @@
 
       function deleteScene(id) {
         if (id === story.start) { alert("Startszene kann nicht gelöscht werden."); return; }
-        const newScenes = { ...story.scenes }; delete newScenes[id];
+        const newScenes = { ...story.scenes };
+        delete newScenes[id];
         setStory({ ...story, scenes: newScenes });
         if (currentScene === id) setCurrentScene(story.start);
       }
@@ -77,7 +78,7 @@
         setGenerating(true);
 
         try {
-          // ⚠️ Browser kann OpenAI API nicht direkt aufrufen -> Backend nötig
+          // ⚠️ In der Realität brauchst du ein Backend, das OpenAI API anspricht
           const response = await fetch("http://localhost:3000/generate-story", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
