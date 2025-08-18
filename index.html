@@ -15,7 +15,12 @@
     function App() {
       const [story, setStory] = useState(() => {
         const saved = localStorage.getItem("storyData");
-        return saved ? JSON.parse(saved) : { start: "intro", scenes: { intro: { text: "Willkommen! Erstelle oder spiele deine Story.", choices: [] } } };
+        return saved ? JSON.parse(saved) : {
+          start: "intro",
+          scenes: {
+            intro: { text: "Willkommen! Erstelle oder spiele deine Story.", choices: [] }
+          }
+        };
       });
 
       const [currentScene, setCurrentScene] = useState(story.start);
@@ -24,89 +29,143 @@
       const [prompt, setPrompt] = useState("");
       const [generating, setGenerating] = useState(false);
 
-      useEffect(() => { localStorage.setItem("storyData", JSON.stringify(story)); }, [story]);
+      useEffect(() => {
+        localStorage.setItem("storyData", JSON.stringify(story));
+      }, [story]);
 
       const scene = story.scenes[currentScene] || { text: "Unbekannte Szene", choices: [] };
 
       function addScene() {
-        if(!newSceneId){ alert("Bitte gib eine Szene-ID ein."); return; }
-        setStory(prev => ({ ...prev, scenes:{ ...prev.scenes, [newSceneId]: { text:"", choices:[] } } }));
+        if (!newSceneId) { alert("Bitte gib eine Szene-ID ein."); return; }
+        setStory(prev => ({
+          ...prev,
+          scenes: { ...prev.scenes, [newSceneId]: { text: "", choices: [] } }
+        }));
         setNewSceneId("");
       }
 
       function deleteScene(id) {
-        if(id === story.start){ alert("Startszene kann nicht gelöscht werden."); return; }
-        const newScenes = {...story.scenes}; delete newScenes[id];
-        setStory({...story, scenes:newScenes});
-        if(currentScene===id) setCurrentScene(story.start);
+        if (id === story.start) { alert("Startszene kann nicht gelöscht werden."); return; }
+        const newScenes = { ...story.scenes }; delete newScenes[id];
+        setStory({ ...story, scenes: newScenes });
+        if (currentScene === id) setCurrentScene(story.start);
       }
 
-      function updateScene(id,text){
-        setStory(prev=>({ ...prev, scenes:{ ...prev.scenes, [id]: { ...prev.scenes[id], text } } }));
-      }
-
-      function addChoice(sceneId,text,next){
-        if(!text || !next){ alert("Bitte gib Text und nächste Szene ein."); return; }
-        setStory(prev=>({
+      function updateScene(id, text) {
+        setStory(prev => ({
           ...prev,
-          scenes:{ ...prev.scenes,
-            [sceneId]:{ ...prev.scenes[sceneId], choices:[...(prev.scenes[sceneId].choices||[]), {text,next}] }
+          scenes: { ...prev.scenes, [id]: { ...prev.scenes[id], text } }
+        }));
+      }
+
+      function addChoice(sceneId, text, next) {
+        if (!text || !next) { alert("Bitte gib Text und nächste Szene ein."); return; }
+        setStory(prev => ({
+          ...prev,
+          scenes: {
+            ...prev.scenes,
+            [sceneId]: {
+              ...prev.scenes[sceneId],
+              choices: [...(prev.scenes[sceneId].choices || []), { text, next }]
+            }
           }
         }));
       }
 
-      async function generateStory(){
-        if(!prompt){ alert("Bitte gib einen Kundenwunsch ein."); return; }
+      async function generateStory() {
+        if (!prompt) { alert("Bitte gib einen Kundenwunsch ein."); return; }
         setGenerating(true);
-        try{
-          const response = await fetch('https://localhost:3000',
-            body: JSON.stringify({
-              model:'gpt-4',
-              messages:[{role:'user',content:`Generiere eine interaktive Geschichte als JSON: {start: "intro", scenes: {intro: {text: "...", choices: [{text: "...", next: "..."}]}}} basierend auf: ${prompt}`}],
-              temperature:0.7,
-              max_tokens:1000
-            })
+
+        try {
+          // ⚠️ Browser kann OpenAI API nicht direkt aufrufen -> Backend nötig
+          const response = await fetch("http://localhost:3000/generate-story", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt })
           });
+
+          if (!response.ok) throw new Error("HTTP Fehler " + response.status);
+
           const data = await response.json();
-          const generatedStory = JSON.parse(data.choices[0].message.content);
-          setStory(generatedStory); setCurrentScene(generatedStory.start);
-          alert("Story generiert!");
-        }catch(e){
+
+          if (data.story) {
+            setStory(data.story);
+            setCurrentScene(data.story.start);
+            alert("Story generiert!");
+          } else {
+            throw new Error("Ungültige Antwort");
+          }
+        } catch (e) {
           console.error(e);
-          const mockStory={ start:"intro", scenes:{ intro:{ text:`Generierte Story basierend auf: ${prompt}`, choices:[{text:"Weiter",next:"ende"}]}, ende:{text:"Ende der Geschichte.",choices:[]} } };
-          setStory(mockStory); setCurrentScene(mockStory.start);
-          alert("Mock-Story generiert (API Fehler).");
+          // Fallback wenn API nicht geht
+          const mockStory = {
+            start: "intro",
+            scenes: {
+              intro: { text: `Generierte Story basierend auf: ${prompt}`, choices: [{ text: "Weiter", next: "ende" }] },
+              ende: { text: "Ende der Geschichte.", choices: [] }
+            }
+          };
+          setStory(mockStory);
+          setCurrentScene(mockStory.start);
+          alert("Mock-Story generiert (API-Fehler).");
         }
+
         setGenerating(false);
       }
 
-      return React.createElement("div",null,
-        React.createElement("div",null,
-          ["play","edit","generate"].map(t=>React.createElement("button",{
-            key:t, onClick:()=>setTab(t)
-          }, t==="play"?"Spielen":t==="edit"?"Editor":"KI-Generieren"))
+      return React.createElement("div", null,
+        // Tabs
+        React.createElement("div", null,
+          ["play", "edit", "generate"].map(t =>
+            React.createElement("button", { key: t, onClick: () => setTab(t) },
+              t === "play" ? "Spielen" : t === "edit" ? "Editor" : "KI-Generieren"
+            )
+          )
         ),
 
-        tab==="play" && React.createElement("div",null,
-          React.createElement("p",null,scene.text),
-          scene.choices.map((c,i)=>React.createElement("button",{key:i,onClick:()=>setCurrentScene(c.next)},c.text))
+        // Play Mode
+        tab === "play" && React.createElement("div", null,
+          React.createElement("p", null, scene.text),
+          scene.choices.map((c, i) =>
+            React.createElement("button", { key: i, onClick: () => setCurrentScene(c.next) }, c.text)
+          )
         ),
 
-        tab==="edit" && React.createElement("div",null,
-          React.createElement("input",{value:newSceneId,onChange:e=>setNewSceneId(e.target.value),placeholder:"Neue Szene-ID"}),
-          React.createElement("button",{onClick:addScene},"Szene hinzufügen"),
-          Object.keys(story.scenes).map(id=>React.createElement("div",{key:id},
-            React.createElement("h3",null,id),
-            React.createElement("textarea",{value:story.scenes[id].text,onChange:e=>updateScene(id,e.target.value)}),
-            React.createElement("input",{placeholder:"Antworttext",id:`choice-text-${id}`}),
-            React.createElement("input",{placeholder:"Nächste Szene-ID",id:`choice-next-${id}`}),
-            React.createElement("button",{onClick:()=>{const t=document.getElementById(`choice-text-${id}`).value; const n=document.getElementById(`choice-next-${id}`).value; addChoice(id,t,n)}},"Antwort hinzufügen"),
-            React.createElement("button",{onClick:()=>deleteScene(id)},"Szene löschen")
-          )),
+        // Edit Mode
+        tab === "edit" && React.createElement("div", null,
+          React.createElement("input", {
+            value: newSceneId, onChange: e => setNewSceneId(e.target.value), placeholder: "Neue Szene-ID"
+          }),
+          React.createElement("button", { onClick: addScene }, "Szene hinzufügen"),
+          Object.keys(story.scenes).map(id => React.createElement("div", { key: id },
+            React.createElement("h3", null, id),
+            React.createElement("textarea", {
+              value: story.scenes[id].text,
+              onChange: e => updateScene(id, e.target.value)
+            }),
+            React.createElement("input", { placeholder: "Antworttext", id: `choice-text-${id}` }),
+            React.createElement("input", { placeholder: "Nächste Szene-ID", id: `choice-next-${id}` }),
+            React.createElement("button", {
+              onClick: () => {
+                const t = document.getElementById(`choice-text-${id}`).value;
+                const n = document.getElementById(`choice-next-${id}`).value;
+                addChoice(id, t, n);
+              }
+            }, "Antwort hinzufügen"),
+            React.createElement("button", { onClick: () => deleteScene(id) }, "Szene löschen")
+          ))
+        ),
 
-        tab==="generate" && React.createElement("div",null,
-          React.createElement("textarea",{value:prompt,onChange:e=>setPrompt(e.target.value),placeholder:"Kundenwunsch z.B. 'Fantasy mit Drachen'"}),
-          React.createElement("button",{onClick:generateStory,disabled:generating} , generating?"Generiere...":"Story generieren")
+        // Generate Mode
+        tab === "generate" && React.createElement("div", null,
+          React.createElement("textarea", {
+            value: prompt,
+            onChange: e => setPrompt(e.target.value),
+            placeholder: "Kundenwunsch z.B. 'Fantasy mit Drachen'"
+          }),
+          React.createElement("button", { onClick: generateStory, disabled: generating },
+            generating ? "Generiere..." : "Story generieren"
+          )
         )
       );
     }
