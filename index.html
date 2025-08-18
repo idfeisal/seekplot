@@ -4,11 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Interaktive Story Engine mit KI</title>
+
+  <!-- React libraries -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+  <!-- Link to external CSS -->
+  <link rel="stylesheet" href="game.css">
 </head>
 <body>
   <div id="root"></div>
+
   <script type="text/javascript">
     const { useState, useEffect } = React;
 
@@ -46,8 +52,7 @@
 
       function deleteScene(id) {
         if (id === story.start) { alert("Startszene kann nicht gelöscht werden."); return; }
-        const newScenes = { ...story.scenes };
-        delete newScenes[id];
+        const newScenes = { ...story.scenes }; delete newScenes[id];
         setStory({ ...story, scenes: newScenes });
         if (currentScene === id) setCurrentScene(story.start);
       }
@@ -78,7 +83,6 @@
         setGenerating(true);
 
         try {
-          // ⚠️ In der Realität brauchst du ein Backend, das OpenAI API anspricht
           const response = await fetch("http://localhost:3000/generate-story", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -98,7 +102,6 @@
           }
         } catch (e) {
           console.error(e);
-          // Fallback wenn API nicht geht
           const mockStory = {
             start: "intro",
             scenes: {
@@ -114,57 +117,65 @@
         setGenerating(false);
       }
 
-      return React.createElement("div", null,
+      return React.createElement("div", { className: "app-container" },
         // Tabs
-        React.createElement("div", null,
+        React.createElement("div", { className: "tabs" },
           ["play", "edit", "generate"].map(t =>
-            React.createElement("button", { key: t, onClick: () => setTab(t) },
-              t === "play" ? "Spielen" : t === "edit" ? "Editor" : "KI-Generieren"
-            )
+            React.createElement("button", {
+              key: t,
+              onClick: () => setTab(t),
+              className: tab === t ? "active-tab" : ""
+            }, t === "play" ? "Spielen" : t === "edit" ? "Editor" : "KI-Generieren")
           )
         ),
 
         // Play Mode
-        tab === "play" && React.createElement("div", null,
-          React.createElement("p", null, scene.text),
+        tab === "play" && React.createElement("div", { className: "play-mode" },
+          React.createElement("p", { className: "scene-text" }, scene.text),
           scene.choices.map((c, i) =>
-            React.createElement("button", { key: i, onClick: () => setCurrentScene(c.next) }, c.text)
+            React.createElement("button", { key: i, onClick: () => setCurrentScene(c.next), className: "choice-btn" }, c.text)
           )
         ),
 
         // Edit Mode
-        tab === "edit" && React.createElement("div", null,
+        tab === "edit" && React.createElement("div", { className: "edit-mode" },
           React.createElement("input", {
-            value: newSceneId, onChange: e => setNewSceneId(e.target.value), placeholder: "Neue Szene-ID"
+            value: newSceneId,
+            onChange: e => setNewSceneId(e.target.value),
+            placeholder: "Neue Szene-ID",
+            className: "new-scene-input"
           }),
-          React.createElement("button", { onClick: addScene }, "Szene hinzufügen"),
-          Object.keys(story.scenes).map(id => React.createElement("div", { key: id },
+          React.createElement("button", { onClick: addScene, className: "add-scene-btn" }, "Szene hinzufügen"),
+          Object.keys(story.scenes).map(id => React.createElement("div", { key: id, className: "scene-editor" },
             React.createElement("h3", null, id),
             React.createElement("textarea", {
               value: story.scenes[id].text,
-              onChange: e => updateScene(id, e.target.value)
+              onChange: e => updateScene(id, e.target.value),
+              className: "scene-textarea"
             }),
-            React.createElement("input", { placeholder: "Antworttext", id: `choice-text-${id}` }),
-            React.createElement("input", { placeholder: "Nächste Szene-ID", id: `choice-next-${id}` }),
+            React.createElement("input", { placeholder: "Antworttext", id: `choice-text-${id}`, className: "choice-input" }),
+            React.createElement("input", { placeholder: "Nächste Szene-ID", id: `choice-next-${id}`, className: "choice-input" }),
             React.createElement("button", {
               onClick: () => {
                 const t = document.getElementById(`choice-text-${id}`).value;
                 const n = document.getElementById(`choice-next-${id}`).value;
                 addChoice(id, t, n);
-              }
+              },
+              className: "add-choice-btn"
             }, "Antwort hinzufügen"),
-            React.createElement("button", { onClick: () => deleteScene(id) }, "Szene löschen")
+            React.createElement("button", { onClick: () => deleteScene(id), className: "delete-scene-btn" }, "Szene löschen")
           ))
         ),
 
         // Generate Mode
-        tab === "generate" && React.createElement("div", null,
+        tab === "generate" && React.createElement("div", { className: "generate-mode" },
           React.createElement("textarea", {
             value: prompt,
             onChange: e => setPrompt(e.target.value),
-            placeholder: "Kundenwunsch z.B. 'Fantasy mit Drachen'"
+            placeholder: "Kundenwunsch z.B. 'Fantasy mit Drachen'",
+            className: "prompt-textarea"
           }),
-          React.createElement("button", { onClick: generateStory, disabled: generating },
+          React.createElement("button", { onClick: generateStory, disabled: generating, className: "generate-btn" },
             generating ? "Generiere..." : "Story generieren"
           )
         )
