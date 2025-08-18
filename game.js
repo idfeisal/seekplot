@@ -70,7 +70,6 @@ function App() {
     }));
   }
 
-  // ✅ Fixed version of generateStory
   async function generateStory() {
     if (!prompt) {
       alert("Bitte gib einen Kundenwunsch ein.");
@@ -87,7 +86,7 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Fehler: ${response.status}`);
+        throw new Error("HTTP Fehler: " + response.status);
       }
 
       const data = await response.json();
@@ -102,12 +101,11 @@ function App() {
     } catch (error) {
       console.error("API Fehler:", error);
 
-      // fallback mock story
       const mockStory = {
         start: "intro",
         scenes: {
           intro: {
-            text: `Generierte Story basierend auf: ${prompt}`,
+            text: "Generierte Story basierend auf: " + prompt,
             choices: [{ text: "Weiter", next: "ende" }],
           },
           ende: { text: "Ende der Geschichte.", choices: [] },
@@ -128,7 +126,7 @@ function App() {
           React.createElement("button", {
             key: t,
             onClick: () => setTab(t),
-            className: `tab-button ${tab === t ? "active" : "inactive"}`
+            className: "tab-button " + (tab === t ? "active" : "inactive")
           }, t === "play" ? "Spielen" : t === "edit" ? "Editor" : "KI-Generieren")
         ),
         React.createElement("button", {
@@ -195,17 +193,17 @@ function App() {
                 React.createElement("input", {
                   placeholder: "Antworttext",
                   className: "editor-input",
-                  id: `choice-text-${sceneId}`
+                  id: "choice-text-" + sceneId
                 }),
                 React.createElement("input", {
                   placeholder: "Nächste Szene-ID",
                   className: "editor-input",
-                  id: `choice-next-${sceneId}`
+                  id: "choice-next-" + sceneId
                 }),
                 React.createElement("button", {
                   onClick: () => {
-                    const text = document.getElementById(`choice-text-${sceneId}`).value;
-                    const next = document.getElementById(`choice-next-${sceneId}`).value;
+                    const text = document.getElementById("choice-text-" + sceneId).value;
+                    const next = document.getElementById("choice-next-" + sceneId).value;
                     addChoice(sceneId, text, next);
                   },
                   className: "action-button"
@@ -231,7 +229,7 @@ function App() {
           React.createElement("button", {
             onClick: generateStory,
             disabled: generating,
-            className: `generate-button ${generating ? "disabled" : "enabled"}`
+            className: "generate-button " + (generating ? "disabled" : "enabled")
           }, generating ? "Generiere..." : "Story generieren")
         )
     )
