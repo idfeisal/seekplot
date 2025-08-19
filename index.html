@@ -34,6 +34,7 @@
       const [newSceneId, setNewSceneId] = useState("");
       const [prompt, setPrompt] = useState("");
       const [generating, setGenerating] = useState(false);
+      const [userInput, setUserInput] = useState("");
 
       useEffect(() => {
         localStorage.setItem("storyData", JSON.stringify(story));
@@ -119,6 +120,22 @@
 
       function resetGame() {
         setCurrentScene(story.start);
+        setUserInput("");
+      }
+
+      function handleUserInput() {
+        const input = userInput.trim();
+        if (!input) {
+          alert("Bitte gib eine Szene-ID ein.");
+          return;
+        }
+        const choice = scene.choices.find(c => c.next.toLowerCase() === input.toLowerCase());
+        if (choice && story.scenes[input]) {
+          setCurrentScene(input);
+          setUserInput("");
+        } else {
+          alert("Ungültige Szene-ID. Bitte gib eine gültige nächste Szene-ID ein.");
+        }
       }
 
       return React.createElement("div", { className: "app-container" },
@@ -135,10 +152,19 @@
 
         // Play Mode
         tab === "play" && React.createElement("div", { className: "play-mode" },
-          React.createElement("p", { className: "scene-text" }, scene.text),
-          scene.choices.map((c, i) =>
-            React.createElement("button", { key: i, onClick: () => setCurrentScene(c.next), className: "choice-btn" }, c.text)
-          ),
+          React.createElement("textarea", {
+            readOnly: true,
+            value: scene.text,
+            className: "large-scene-textarea",
+            rows: 10 // Makes it larger by default
+          }),
+          React.createElement("input", {
+            value: userInput,
+            onChange: e => setUserInput(e.target.value),
+            placeholder: "Gib die nächste Szene-ID ein",
+            className: "user-input"
+          }),
+          React.createElement("button", { onClick: handleUserInput, className: "submit-input-btn" }, "Weiter"),
           React.createElement("button", { onClick: resetGame, className: "reset-btn" }, "Neustart")
         ),
 
