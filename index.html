@@ -1,5 +1,3 @@
-<!DOCTYPE html>
-<html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -117,6 +115,10 @@
         setGenerating(false);
       }
 
+      function resetGame() {
+        setCurrentScene(story.start);
+      }
+
       return React.createElement("div", { className: "app-container" },
         // Tabs
         React.createElement("div", { className: "tabs" },
@@ -134,7 +136,8 @@
           React.createElement("p", { className: "scene-text" }, scene.text),
           scene.choices.map((c, i) =>
             React.createElement("button", { key: i, onClick: () => setCurrentScene(c.next), className: "choice-btn" }, c.text)
-          )
+          ),
+          React.createElement("button", { onClick: resetGame, className: "reset-btn" }, "Neustart")
         ),
 
         // Edit Mode
