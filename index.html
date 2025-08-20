@@ -106,11 +106,7 @@
 
     async function generateSituation(genre) {
       try {
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer YOUR_OPENAI_API_KEY` // Replace with secure backend
+        const res = await fetch("https://localhost:3000", 
           },
           body: JSON.stringify({
             model: "gpt-4o-mini",
