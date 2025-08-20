@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Resource Negotiation Simulator</title>
-  <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-6 min-h-screen">
@@ -106,19 +105,16 @@
 
     async function generateSituation(genre) {
       try {
-        const res = await fetch("https://localhost:3000", 
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              { role: "system", content: `Generate a 30-50 word situation description for a ${genre} setting, addressing resource allocation challenges (e.g., economic issues, social unrest, or environmental crises). The situation should prompt the user to propose a policy.` }
-            ]
-          })
+        const res = await fetch("/api/situation", { // placeholder for backend
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ genre })
         });
+
         if (!res.ok) throw new Error(`HTTP Error: ${res.status} ${res.statusText}`);
         const data = await res.json();
-        if (!data.choices?.[0]?.message?.content) throw new Error("Invalid API response");
-        const situation = data.choices[0].message.content;
+        const situation = data.situation;
+
         document.getElementById('situation-text').textContent = situation;
         addEvent(`New situation: ${situation}`);
         return situation;
@@ -132,34 +128,37 @@
     }
 
     document.getElementById('submit-policy').addEventListener('click', async () => {
-      if (round > 3) return; // Prevent submission after game over
+      if (round > 3) return;
+
       const policyText = sanitizeInput(document.getElementById('policy').value);
-      if (policyText.trim().split(/\s+/).length > 50) {
+      const words = policyText.trim().split(/\s+/);
+      if (words.length === 0 || words[0] === "") {
+        alert('Policy cannot be empty!');
+        return;
+      }
+      if (words.length > 50) {
         alert('Policy exceeds 50 words!');
         return;
       }
+
       addEvent(`Your policy submitted: "${policyText}"`);
 
       const genre = document.getElementById('genre').value;
-      // Generate opposing proposal
+      // Get opposing faction proposal from backend
       try {
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        const res = await fetch("/api/opposing", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer YOUR_OPENAI_API_KEY` // Replace with secure backend
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              { role: "system", content: `You are the opposing faction in a ${genre} setting. Generate a 50-word policy addressing resource allocation, economic impact, and fairness, in response to the situation: "${document.getElementById('situation-text').textContent}"` }
-            ]
+            genre,
+            situation: document.getElementById('situation-text').textContent
           })
         });
+
         if (!res.ok) throw new Error(`HTTP Error: ${res.status} ${res.statusText}`);
         const data = await res.json();
-        if (!data.choices?.[0]?.message?.content) throw new Error("Invalid API response");
-        const aiProposal = data.choices[0].message.content;
+        const aiProposal = data.proposal;
+
         document.getElementById('opposing-text').textContent = aiProposal;
         document.getElementById('opposing-section').classList.remove('hidden');
         addEvent("Opposing faction submitted a proposal.");
@@ -169,13 +168,11 @@
         document.getElementById('opposing-section').classList.remove('hidden');
         addEvent("Error fetching opposing proposal.");
       }
-
-      // Generate new situation for the next round
-      await generateSituation(genre);
     });
 
     function vote(approve) {
-      if (round > 3) return; // Prevent further actions after game over
+      if (round > 3) return;
+
       const text = document.getElementById('opposing-text').textContent;
       const comment = sanitizeInput(document.getElementById('comment').value);
       addEvent(`You ${approve ? 'approved' : 'rejected'} the opposing proposal: "${text}"`);
@@ -200,7 +197,6 @@
         addEvent(`Game Over! Final Metrics - Economy: ${metrics.economy}%, Stability: ${metrics.stability}%, Opinion: ${metrics.opinion}%`);
         document.getElementById('submit-policy').disabled = true;
       } else {
-        // Generate situation for the next round
         const genre = document.getElementById('genre').value;
         generateSituation(genre);
       }
@@ -209,7 +205,7 @@
     document.getElementById('approve-btn').addEventListener('click', () => vote(true));
     document.getElementById('reject-btn').addEventListener('click', () => vote(false));
 
-    // Initialize with a situation
+    // Initialize with first situation
     generateSituation(document.getElementById('genre').value);
     updateMetrics();
   </script>
