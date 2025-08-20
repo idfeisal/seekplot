@@ -1,219 +1,221 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Interaktive Story Engine mit KI</title>
-
-  <!-- React libraries -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-
-  <!-- Link to external CSS -->
-  <link rel="stylesheet" href="game.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resource Negotiation Simulator</title>
+  <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <div id="root"></div>
+<body class="bg-gray-100 p-6 min-h-screen">
+  <!-- Header -->
+  <header class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold">Resource Negotiation Simulator</h1>
+    <div class="flex gap-4 items-center">
+      <select id="genre" class="p-2 rounded" aria-label="Select negotiation scenario genre">
+        <option value="medieval">Medieval</option>
+        <option value="modern">Modern</option>
+        <option value="alternate">Alternate History</option>
+      </select>
+      <span id="round">Round: 1 / 3</span>
+    </div>
+  </header>
 
-  <script type="text/javascript">
-    const { useState, useEffect } = React;
+  <!-- Metrics -->
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="flex flex-col items-center">
+      <span class="text-lg font-semibold">Economy</span>
+      <div class="w-full bg-gray-300 rounded h-4 mt-1">
+        <div id="economy-bar" class="bg-green-500 h-4 rounded" style="width: 100%;"></div>
+      </div>
+      <span id="economy-text" class="mt-1">100%</span>
+    </div>
+    <div class="flex flex-col items-center">
+      <span class="text-lg font-semibold">Stability</span>
+      <div class="w-full bg-gray-300 rounded h-4 mt-1">
+        <div id="stability-bar" class="bg-green-500 h-4 rounded" style="width: 100%;"></div>
+      </div>
+      <span id="stability-text" class="mt-1">100%</span>
+    </div>
+    <div class="flex flex-col items-center">
+      <span class="text-lg font-semibold">Public Opinion</span>
+      <div class="w-full bg-gray-300 rounded h-4 mt-1">
+        <div id="opinion-bar" class="bg-green-500 h-4 rounded" style="width: 50%;"></div>
+      </div>
+      <span id="opinion-text" class="mt-1">50%</span>
+    </div>
+  </div>
 
-    function App() {
-      const [story, setStory] = useState(() => {
-        const saved = localStorage.getItem("storyData");
-        return saved ? JSON.parse(saved) : {
-          start: "intro",
-          scenes: {
-            intro: { text: "Willkommen! Erstelle oder spiele deine Story.", choices: [] }
-          }
-        };
-      });
+  <!-- Policy Submission -->
+  <section class="p-4 bg-white rounded shadow mb-6">
+    <h2 class="font-bold text-xl mb-2">Submit Policy Proposal (50 words)</h2>
+    <div id="situation-text" class="p-2 border border-gray-300 rounded mb-2 bg-gray-50" aria-live="polite">
+      Click "Submit Policy" to start the first round and receive a situation.
+    </div>
+    <textarea id="policy" class="w-full p-2 border border-gray-400 rounded mb-2" rows="4"
+      placeholder="Address resource allocation, economic impact, and fairness..."
+      aria-label="Enter your policy proposal (max 50 words)"></textarea>
+    <button id="submit-policy" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Submit Policy</button>
+  </section>
 
-      const [currentScene, setCurrentScene] = useState(story.start);
-      const [tab, setTab] = useState("play");
-      const [newSceneId, setNewSceneId] = useState("");
-      const [prompt, setPrompt] = useState("");
-      const [generating, setGenerating] = useState(false);
-      const [userInput, setUserInput] = useState("");
+  <!-- Opposing Proposal -->
+  <section id="opposing-section" class="p-4 bg-white rounded shadow mb-6 hidden">
+    <h2 class="font-bold text-xl mb-2">Opposing Faction Proposal</h2>
+    <div id="opposing-text" class="p-2 border border-gray-300 rounded mb-2 bg-gray-50"></div>
+    <div class="flex gap-2 mb-2">
+      <button id="approve-btn" class="bg-green-500 text-white px-4 py-1 rounded" aria-label="Approve opposing proposal">Approve</button>
+      <button id="reject-btn" class="bg-red-500 text-white px-4 py-1 rounded" aria-label="Reject opposing proposal">Reject</button>
+    </div>
+    <input type="text" id="comment" class="w-full p-2 border border-gray-400 rounded"
+      placeholder="Comment on proposal (1 sentence)" aria-label="Comment on opposing proposal">
+  </section>
 
-      useEffect(() => {
-        localStorage.setItem("storyData", JSON.stringify(story));
-      }, [story]);
+  <!-- Event Log -->
+  <section class="p-4 bg-gray-50 rounded shadow max-h-48 overflow-y-auto">
+    <h2 class="font-bold text-xl mb-2">Event Log</h2>
+    <ul id="event-log" class="list-disc pl-5" aria-live="polite"></ul>
+  </section>
 
-      const scene = story.scenes[currentScene] || { text: "Unbekannte Szene", choices: [] };
+  <script>
+    let metrics = { economy: 100, stability: 100, opinion: 50 };
+    let round = 1;
 
-      function addScene() {
-        if (!newSceneId) { alert("Bitte gib eine Szene-ID ein."); return; }
-        setStory(prev => ({
-          ...prev,
-          scenes: { ...prev.scenes, [newSceneId]: { text: "", choices: [] } }
-        }));
-        setNewSceneId("");
-      }
-
-      function deleteScene(id) {
-        if (id === story.start) { alert("Startszene kann nicht gelöscht werden."); return; }
-        const newScenes = { ...story.scenes }; delete newScenes[id];
-        setStory({ ...story, scenes: newScenes });
-        if (currentScene === id) setCurrentScene(story.start);
-      }
-
-      function updateScene(id, text) {
-        setStory(prev => ({
-          ...prev,
-          scenes: { ...prev.scenes, [id]: { ...prev.scenes[id], text } }
-        }));
-      }
-
-      function addChoice(sceneId, text, next) {
-        if (!text || !next) { alert("Bitte gib Text und nächste Szene ein."); return; }
-        setStory(prev => ({
-          ...prev,
-          scenes: {
-            ...prev.scenes,
-            [sceneId]: {
-              ...prev.scenes[sceneId],
-              choices: [...(prev.scenes[sceneId].choices || []), { text, next }]
-            }
-          }
-        }));
-      }
-
-      async function generateStory() {
-        if (!prompt) { alert("Bitte gib einen Kundenwunsch ein."); return; }
-        setGenerating(true);
-
-        try {
-          const response = await fetch("http://localhost:3000/generate-story", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt })
-          });
-
-          if (!response.ok) throw new Error("HTTP Fehler " + response.status);
-
-          const data = await response.json();
-
-          if (data.story) {
-            setStory(data.story);
-            setCurrentScene(data.story.start);
-            alert("Story generiert!");
-          } else {
-            throw new Error("Ungültige Antwort");
-          }
-        } catch (e) {
-          console.error(e);
-          const mockStory = {
-            start: "intro",
-            scenes: {
-              intro: { text: `Generierte Story basierend auf: ${prompt}`, choices: [{ text: "Weiter", next: "ende" }] },
-              ende: { text: "Ende der Geschichte.", choices: [] }
-            }
-          };
-          setStory(mockStory);
-          setCurrentScene(mockStory.start);
-          alert("Mock-Story generiert (API-Fehler).");
-        }
-
-        setGenerating(false);
-      }
-
-      function resetGame() {
-        setCurrentScene(story.start);
-        setUserInput("");
-      }
-
-      function handleUserInput() {
-        const input = userInput.trim();
-        if (!input) {
-          alert("Bitte gib eine Szene-ID ein.");
-          return;
-        }
-        const choice = scene.choices.find(c => c.next.toLowerCase() === input.toLowerCase());
-        if (choice && story.scenes[input]) {
-          setCurrentScene(input);
-          setUserInput("");
-        } else {
-          alert("Ungültige Szene-ID. Bitte gib eine gültige nächste Szene-ID ein.");
-        }
-      }
-
-      return React.createElement("div", { className: "app-container" },
-        // Tabs
-        React.createElement("div", { className: "tabs" },
-          ["play", "edit", "generate"].map(t =>
-            React.createElement("button", {
-              key: t,
-              onClick: () => setTab(t),
-              className: tab === t ? "active-tab" : ""
-            }, t === "play" ? "Spielen" : t === "edit" ? "Editor" : "KI-Generieren")
-          )
-        ),
-
-        // Play Mode
-        tab === "play" && React.createElement("div", { className: "play-mode" },
-          React.createElement("textarea", {
-            readOnly: true,
-            value: scene.text,
-            className: "large-scene-textarea",
-            rows: 10 // Makes it larger by default
-          }),
-          React.createElement("input", {
-            value: userInput,
-            onChange: e => setUserInput(e.target.value),
-            placeholder: "Gib die nächste Szene-ID ein",
-            className: "user-input"
-          }),
-          React.createElement("button", { onClick: handleUserInput, className: "submit-input-btn" }, "Weiter"),
-          React.createElement("button", { onClick: resetGame, className: "reset-btn" }, "Neustart")
-        ),
-
-        // Edit Mode
-        tab === "edit" && React.createElement("div", { className: "edit-mode" },
-          React.createElement("input", {
-            value: newSceneId,
-            onChange: e => setNewSceneId(e.target.value),
-            placeholder: "Neue Szene-ID",
-            className: "new-scene-input"
-          }),
-          React.createElement("button", { onClick: addScene, className: "add-scene-btn" }, "Szene hinzufügen"),
-          Object.keys(story.scenes).map(id => React.createElement("div", { key: id, className: "scene-editor" },
-            React.createElement("h3", null, id),
-            React.createElement("textarea", {
-              value: story.scenes[id].text,
-              onChange: e => updateScene(id, e.target.value),
-              className: "scene-textarea"
-            }),
-            React.createElement("input", { placeholder: "Antworttext", id: `choice-text-${id}`, className: "choice-input" }),
-            React.createElement("input", { placeholder: "Nächste Szene-ID", id: `choice-next-${id}`, className: "choice-input" }),
-            React.createElement("button", {
-              onClick: () => {
-                const t = document.getElementById(`choice-text-${id}`).value;
-                const n = document.getElementById(`choice-next-${id}`).value;
-                addChoice(id, t, n);
-              },
-              className: "add-choice-btn"
-            }, "Antwort hinzufügen"),
-            React.createElement("button", { onClick: () => deleteScene(id), className: "delete-scene-btn" }, "Szene löschen")
-          ))
-        ),
-
-        // Generate Mode
-        tab === "generate" && React.createElement("div", { className: "generate-mode" },
-          React.createElement("textarea", {
-            value: prompt,
-            onChange: e => setPrompt(e.target.value),
-            placeholder: "Kundenwunsch z.B. 'Fantasy mit Drachen'",
-            className: "prompt-textarea"
-          }),
-          React.createElement("button", { onClick: generateStory, disabled: generating, className: "generate-btn" },
-            generating ? "Generiere..." : "Story generieren"
-          )
-        )
-      );
+    function updateMetrics() {
+      metrics.economy = Math.min(Math.max(metrics.economy, 0), 100);
+      metrics.stability = Math.min(Math.max(metrics.stability, 0), 100);
+      metrics.opinion = Math.min(Math.max(metrics.opinion, 0), 100);
+      document.getElementById('economy-bar').style.width = metrics.economy + '%';
+      document.getElementById('stability-bar').style.width = metrics.stability + '%';
+      document.getElementById('opinion-bar').style.width = metrics.opinion + '%';
+      document.getElementById('economy-text').textContent = metrics.economy + '%';
+      document.getElementById('stability-text').textContent = metrics.stability + '%';
+      document.getElementById('opinion-text').textContent = metrics.opinion + '%';
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+    function addEvent(text) {
+      const ul = document.getElementById('event-log');
+      const li = document.createElement('li');
+      li.textContent = `Round ${round}: ${text}`;
+      ul.appendChild(li);
+      ul.scrollTop = ul.scrollHeight;
+    }
+
+    function sanitizeInput(input) {
+      return input.replace(/[<>&"']/g, "");
+    }
+
+    async function generateSituation(genre) {
+      try {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer YOUR_OPENAI_API_KEY` // Replace with secure backend
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: `Generate a 30-50 word situation description for a ${genre} setting, addressing resource allocation challenges (e.g., economic issues, social unrest, or environmental crises). The situation should prompt the user to propose a policy.` }
+            ]
+          })
+        });
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status} ${res.statusText}`);
+        const data = await res.json();
+        if (!data.choices?.[0]?.message?.content) throw new Error("Invalid API response");
+        const situation = data.choices[0].message.content;
+        document.getElementById('situation-text').textContent = situation;
+        addEvent(`New situation: ${situation}`);
+        return situation;
+      } catch (err) {
+        console.error(err);
+        const mockSituation = `In a ${genre} setting, a resource shortage threatens stability. Propose a policy to address it.`;
+        document.getElementById('situation-text').textContent = mockSituation;
+        addEvent(`Error fetching situation. Mock situation: ${mockSituation}`);
+        return mockSituation;
+      }
+    }
+
+    document.getElementById('submit-policy').addEventListener('click', async () => {
+      if (round > 3) return; // Prevent submission after game over
+      const policyText = sanitizeInput(document.getElementById('policy').value);
+      if (policyText.trim().split(/\s+/).length > 50) {
+        alert('Policy exceeds 50 words!');
+        return;
+      }
+      addEvent(`Your policy submitted: "${policyText}"`);
+
+      const genre = document.getElementById('genre').value;
+      // Generate opposing proposal
+      try {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer YOUR_OPENAI_API_KEY` // Replace with secure backend
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: `You are the opposing faction in a ${genre} setting. Generate a 50-word policy addressing resource allocation, economic impact, and fairness, in response to the situation: "${document.getElementById('situation-text').textContent}"` }
+            ]
+          })
+        });
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status} ${res.statusText}`);
+        const data = await res.json();
+        if (!data.choices?.[0]?.message?.content) throw new Error("Invalid API response");
+        const aiProposal = data.choices[0].message.content;
+        document.getElementById('opposing-text').textContent = aiProposal;
+        document.getElementById('opposing-section').classList.remove('hidden');
+        addEvent("Opposing faction submitted a proposal.");
+      } catch (err) {
+        console.error(err);
+        document.getElementById('opposing-text').textContent = "Error: Could not generate opposing proposal.";
+        document.getElementById('opposing-section').classList.remove('hidden');
+        addEvent("Error fetching opposing proposal.");
+      }
+
+      // Generate new situation for the next round
+      await generateSituation(genre);
+    });
+
+    function vote(approve) {
+      if (round > 3) return; // Prevent further actions after game over
+      const text = document.getElementById('opposing-text').textContent;
+      const comment = sanitizeInput(document.getElementById('comment').value);
+      addEvent(`You ${approve ? 'approved' : 'rejected'} the opposing proposal: "${text}"`);
+      if (comment) addEvent(`Comment: ${comment}`);
+
+      const econChange = approve ? 5 : -5;
+      const stabilityChange = approve ? 3 : -10;
+      const opinionChange = approve ? 5 : -5;
+
+      metrics.economy += econChange;
+      metrics.stability += stabilityChange;
+      metrics.opinion += opinionChange;
+      updateMetrics();
+
+      round++;
+      document.getElementById('round').textContent = `Round: ${round} / 3`;
+      document.getElementById('policy').value = '';
+      document.getElementById('opposing-section').classList.add('hidden');
+      document.getElementById('comment').value = '';
+
+      if (round > 3) {
+        addEvent(`Game Over! Final Metrics - Economy: ${metrics.economy}%, Stability: ${metrics.stability}%, Opinion: ${metrics.opinion}%`);
+        document.getElementById('submit-policy').disabled = true;
+      } else {
+        // Generate situation for the next round
+        const genre = document.getElementById('genre').value;
+        generateSituation(genre);
+      }
+    }
+
+    document.getElementById('approve-btn').addEventListener('click', () => vote(true));
+    document.getElementById('reject-btn').addEventListener('click', () => vote(false));
+
+    // Initialize with a situation
+    generateSituation(document.getElementById('genre').value);
+    updateMetrics();
   </script>
 </body>
 </html>
