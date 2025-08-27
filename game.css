@@ -6,25 +6,32 @@ body {
 }
 
 header {
-  text-align: center; /* Center the header content */
-  background-color: #007bff; /* Blue background color for header */
-  color: white; /* White text color for contrast */
-  padding: 20px; /* Add padding for better spacing */
-  border-radius: 8px; /* Optional: slight rounding for aesthetics */
-  margin: 20px auto; /* Center the header horizontally with auto margins */
-  max-width: 900px; /* Match the app-container width */
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Optional: subtle shadow for depth */
+  display: flex; /* Use flexbox to center content */
+  flex-direction: column; /* Stack h1 and p vertically */
+  align-items: center; /* Center content horizontally */
+  justify-content: center; /* Center content vertically */
+  background-color: #007bff; /* Blue background color */
+  color: white; /* White text color */
+  padding: 20px; /* Padding for spacing */
+  border-radius: 8px; /* Rounded corners */
+  margin: 20px auto; /* Center the header block horizontally */
+  width: 100%; /* Ensure it takes full width up to max-width */
+  max-width: 900px; /* Match app-container width */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  box-sizing: border-box; /* Ensure padding doesn’t affect width */
 }
 
 header h1 {
-  margin: 0; /* Remove default margin for h1 */
-  font-size: 2rem; /* Adjust font size */
+  margin: 0; /* Remove default margin */
+  font-size: 2rem; /* Title size */
+  text-align: center; /* Ensure text is centered */
 }
 
 header p {
-  margin: 5px 0 0; /* Small top margin for the paragraph */
-  font-size: 1.1rem; /* Slightly smaller font for the subtitle */
-  opacity: 0.9; /* Subtle transparency for secondary text */
+  margin: 5px 0 0; /* Small top margin for subtitle */
+  font-size: 1.1rem; /* Subtitle size */
+  opacity: 0.9; /* Subtle transparency */
+  text-align: center; /* Ensure text is centered */
 }
 
 .app-container {
