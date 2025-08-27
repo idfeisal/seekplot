@@ -3,74 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Erstelle und spiele interaktive Geschichten mit KI-Unterstützung.">
+  <meta name="keywords" content="AI, Story Engine, interaktive Geschichten, React">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com;">
   <title>Interaktive AI Story Engine</title>
 
-  <!-- Google Fonts for modern look -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-
-  <!-- External CSS -->
   <link rel="stylesheet" href="game.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-AVbw3UJ2e9bq64vSaS9Am0fje1Pa8pbGxf5vS6a2e+zgE=" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-  <!-- React libraries -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-
-  <!-- Optional: Icons for AI interaction -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
-
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      margin: 0;
-      padding: 0;
-      background: linear-gradient(135deg, #fdfbfb, #ebedee);
-      color: #333;
-    }
-
-    header {
-      text-align: center;
-      padding: 1rem 0;
-      background: #4a90e2;
-      color: white;
-    }
-
-    header h1 {
-      margin: 0;
-      font-weight: 700;
-    }
-
-    header p {
-      margin: 0.25rem 0 0;
-      font-weight: 400;
-    }
-
-    main {
-      max-width: 900px;
-      margin: 2rem auto;
-      padding: 1rem;
-    }
-
-    /* Optional fade-in animation for AI cards */
-    .fade-in {
-      animation: fadeIn 0.5s ease-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-  </style>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 </head>
 <body>
-
   <header>
     <h1>Interaktive AI Story Engine</h1>
     <p>Erstelle und spiele deine Geschichten mit KI-Unterstützung</p>
   </header>
 
-  <main id="root"></main>
+  <main id="root" role="main" aria-label="Interaktive Story Engine">
+    <div class="loading">Lade Story Engine...</div>
+  </main>
 
-  <!-- React App Script -->
   <script type="text/javascript" src="app.js"></script>
 </body>
 </html>
