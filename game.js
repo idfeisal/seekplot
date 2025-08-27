@@ -33,7 +33,7 @@ function App() {
     });
 
     try {
-      const response = await fetch("http://localhost:3000", {
+      const response = await fetch("http://localhost:3000/generate-story", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
@@ -43,7 +43,9 @@ function App() {
       const data = await response.json();
       console.log("API response:", data);
 
-      const aiResponse = data.storyText || "🤖 AI: Keine Antwort vom Server erhalten.";
+      const aiResponse = (data.story && data.story.scenes && data.story.scenes.intro && data.story.scenes.intro.text) 
+        ? data.story.scenes.intro.text 
+        : "🤖 AI: Keine gültige Antwort vom Server erhalten.";
       setStoryHistory((prev) => {
         const newHistory = [...prev, { id: Date.now() + 1, type: "ai", text: aiResponse }];
         console.log("Added AI response:", newHistory);
