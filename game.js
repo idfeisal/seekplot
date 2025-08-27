@@ -1,7 +1,6 @@
 const { useState, useEffect } = React;
 
 function App() {
-  // Initialize story history from localStorage or default
   const [storyHistory, setStoryHistory] = useState(() => {
     const saved = localStorage.getItem("storyHistory");
     console.log("Loaded storyHistory:", saved);
@@ -13,13 +12,11 @@ function App() {
   const [prompt, setPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
 
-  // Persist story history to localStorage
   useEffect(() => {
     console.log("Saving storyHistory:", storyHistory);
     localStorage.setItem("storyHistory", JSON.stringify(storyHistory));
   }, [storyHistory]);
 
-  // Handle user input submission
   async function submitInput() {
     if (!prompt.trim()) {
       console.log("Empty input");
@@ -29,16 +26,14 @@ function App() {
     console.log("Submitting prompt:", prompt);
     setGenerating(true);
 
-    // Add user input to history
     setStoryHistory((prev) => {
       const newHistory = [...prev, { id: Date.now(), type: "user", text: prompt }];
       console.log("Added user input:", newHistory);
       return newHistory;
     });
 
-    // Send prompt to API
     try {
-      const response = await fetch("http://localhost:3000", {
+      const response = await fetch("http://localhost:3000/generate-story", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
@@ -68,7 +63,6 @@ function App() {
     setGenerating(false);
   }
 
-  // Reset story
   function resetStory() {
     console.log("Resetting story");
     setStoryHistory([{ id: Date.now(), type: "ai", text: "Willkommen! Starte deine Geschichte, indem du etwas eingibst. Zum Beispiel: 'Ich betrete einen Wald.'" }]);
@@ -78,7 +72,6 @@ function App() {
   return React.createElement(
     "div",
     { className: "app-container" },
-    // Story display
     React.createElement(
       "div",
       { className: "story-container" },
@@ -90,7 +83,6 @@ function App() {
         )
       )
     ),
-    // Input area
     React.createElement(
       "div",
       { className: "input-container" },
