@@ -1,9 +1,30 @@
-/* Reset and basic layout */
 body {
   margin: 0;
   font-family: 'Inter', sans-serif;
   background: linear-gradient(135deg, #fdfbfb, #ebedee);
   color: #333;
+}
+
+header {
+  text-align: center; /* Center the header content */
+  background-color: #007bff; /* Blue background color for header */
+  color: white; /* White text color for contrast */
+  padding: 20px; /* Add padding for better spacing */
+  border-radius: 8px; /* Optional: slight rounding for aesthetics */
+  margin: 20px auto; /* Center the header horizontally with auto margins */
+  max-width: 900px; /* Match the app-container width */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Optional: subtle shadow for depth */
+}
+
+header h1 {
+  margin: 0; /* Remove default margin for h1 */
+  font-size: 2rem; /* Adjust font size */
+}
+
+header p {
+  margin: 5px 0 0; /* Small top margin for the paragraph */
+  font-size: 1.1rem; /* Slightly smaller font for the subtitle */
+  opacity: 0.9; /* Subtle transparency for secondary text */
 }
 
 .app-container {
@@ -112,5 +133,18 @@ body {
   .app-container {
     margin: 10px;
     padding: 15px;
+  }
+
+  header {
+    margin: 10px;
+    padding: 15px;
+  }
+
+  header h1 {
+    font-size: 1.5rem; /* Smaller font size for mobile */
+  }
+
+  header p {
+    font-size: 0.9rem; /* Smaller subtitle for mobile */
   }
 }
