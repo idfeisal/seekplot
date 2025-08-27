@@ -3,10 +3,9 @@ const { useState, useEffect } = React;
 function App() {
   const [story, setStory] = useState(() => {
     const saved = localStorage.getItem("storyData");
-    return saved ? JSON.parse(saved) : {
-      start: "intro",
-      scenes: { intro: { text: "Willkommen! Erstelle oder spiele deine Story.", choices: [] } }
-    };
+    return saved
+      ? JSON.parse(saved)
+      : { start: "intro", scenes: { intro: { text: "Willkommen! Erstelle oder spiele deine Story.", choices: [] } } };
   });
 
   const [currentScene, setCurrentScene] = useState(story.start);
@@ -27,11 +26,9 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt })
       });
-
       const data = await response.json();
 
-      // Push AI response into aiHistory, not into story
-      setAiHistory(prev => [...prev, { text: data.storyText || `Mock AI: ${prompt}` }]);
+      setAiHistory(prev => [...prev, { text: data.storyText || `🤖 Mock AI: ${prompt}` }]);
     } catch (err) {
       console.error(err);
       setAiHistory(prev => [...prev, { text: `🤖 Mock AI: ${prompt}` }]);
@@ -41,26 +38,24 @@ function App() {
     setGenerating(false);
   }
 
-  return React.createElement("div", { className: "app-modern" },
+  return React.createElement("div", { className: "app-container" },
     // Tabs
     React.createElement("div", { className: "tabs" },
       ["play", "edit", "generate"].map(t =>
         React.createElement("button", {
           key: t,
           onClick: () => setTab(t),
-          className: `tab-button ${tab === t ? "active" : ""}`
+          className: tab === t ? "active-tab" : ""
         }, t === "play" ? "Spielen" : t === "edit" ? "Editor" : "KI-Generieren")
       )
     ),
 
     // Play Mode
     tab === "play" && React.createElement("div", { className: "play-mode" },
-      // Show AI-generated content
       aiHistory.map((ai, idx) =>
-        React.createElement("div", { key: idx, className: "ai-card fade-in" }, ai.text)
+        React.createElement("div", { key: idx, className: "ai-card" }, ai.text)
       ),
-      // Show current scene
-      React.createElement("div", { className: "scene-card fade-in" },
+      React.createElement("div", { className: "scene-card" },
         React.createElement("p", null, scene.text),
         scene.choices.map((choice, idx) =>
           React.createElement("button", {
@@ -78,13 +73,15 @@ function App() {
         value: prompt,
         onChange: e => setPrompt(e.target.value),
         placeholder: "Beschreibe, worüber die KI schreiben soll...",
-        className: "generate-textarea"
+        className: "prompt-textarea"
       }),
       React.createElement("button", {
         onClick: generateStory,
         disabled: generating,
-        className: `generate-btn ${generating ? "disabled" : ""}`
+        className: "generate-btn"
       }, generating ? "Generiere..." : "Story generieren")
     )
   );
 }
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
