@@ -1,219 +1,76 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Interaktive Story Engine mit KI</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interaktive AI Story Engine</title>
+
+  <!-- Google Fonts for modern look -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- External CSS -->
+  <link rel="stylesheet" href="game.css">
 
   <!-- React libraries -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
 
-  <!-- Link to external CSS -->
-  <link rel="stylesheet" href="game.css">
-</head>
-<body>
-  <div id="root"></div>
+  <!-- Optional: Icons for AI interaction -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-  <script type="text/javascript">
-    const { useState, useEffect } = React;
-
-    function App() {
-      const [story, setStory] = useState(() => {
-        const saved = localStorage.getItem("storyData");
-        return saved ? JSON.parse(saved) : {
-          start: "intro",
-          scenes: {
-            intro: { text: "Willkommen! Erstelle oder spiele deine Story.", choices: [] }
-          }
-        };
-      });
-
-      const [currentScene, setCurrentScene] = useState(story.start);
-      const [tab, setTab] = useState("play");
-      const [newSceneId, setNewSceneId] = useState("");
-      const [prompt, setPrompt] = useState("");
-      const [generating, setGenerating] = useState(false);
-      const [userInput, setUserInput] = useState("");
-
-      useEffect(() => {
-        localStorage.setItem("storyData", JSON.stringify(story));
-      }, [story]);
-
-      const scene = story.scenes[currentScene] || { text: "Unbekannte Szene", choices: [] };
-
-      function addScene() {
-        if (!newSceneId) { alert("Bitte gib eine Szene-ID ein."); return; }
-        setStory(prev => ({
-          ...prev,
-          scenes: { ...prev.scenes, [newSceneId]: { text: "", choices: [] } }
-        }));
-        setNewSceneId("");
-      }
-
-      function deleteScene(id) {
-        if (id === story.start) { alert("Startszene kann nicht gelöscht werden."); return; }
-        const newScenes = { ...story.scenes }; delete newScenes[id];
-        setStory({ ...story, scenes: newScenes });
-        if (currentScene === id) setCurrentScene(story.start);
-      }
-
-      function updateScene(id, text) {
-        setStory(prev => ({
-          ...prev,
-          scenes: { ...prev.scenes, [id]: { ...prev.scenes[id], text } }
-        }));
-      }
-
-      function addChoice(sceneId, text, next) {
-        if (!text || !next) { alert("Bitte gib Text und nächste Szene ein."); return; }
-        setStory(prev => ({
-          ...prev,
-          scenes: {
-            ...prev.scenes,
-            [sceneId]: {
-              ...prev.scenes[sceneId],
-              choices: [...(prev.scenes[sceneId].choices || []), { text, next }]
-            }
-          }
-        }));
-      }
-
-      async function generateStory() {
-        if (!prompt) { alert("Bitte gib einen Kundenwunsch ein."); return; }
-        setGenerating(true);
-
-        try {
-          const response = await fetch("http://localhost:3000/generate-story", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt })
-          });
-
-          if (!response.ok) throw new Error("HTTP Fehler " + response.status);
-
-          const data = await response.json();
-
-          if (data.story) {
-            setStory(data.story);
-            setCurrentScene(data.story.start);
-            alert("Story generiert!");
-          } else {
-            throw new Error("Ungültige Antwort");
-          }
-        } catch (e) {
-          console.error(e);
-          const mockStory = {
-            start: "intro",
-            scenes: {
-              intro: { text: `Generierte Story basierend auf: ${prompt}`, choices: [{ text: "Weiter", next: "ende" }] },
-              ende: { text: "Ende der Geschichte.", choices: [] }
-            }
-          };
-          setStory(mockStory);
-          setCurrentScene(mockStory.start);
-          alert("Mock-Story generiert (API-Fehler).");
-        }
-
-        setGenerating(false);
-      }
-
-      function resetGame() {
-        setCurrentScene(story.start);
-        setUserInput("");
-      }
-
-      function handleUserInput() {
-        const input = userInput.trim();
-        if (!input) {
-          alert("Bitte gib eine Szene-ID ein.");
-          return;
-        }
-        const choice = scene.choices.find(c => c.next.toLowerCase() === input.toLowerCase());
-        if (choice && story.scenes[input]) {
-          setCurrentScene(input);
-          setUserInput("");
-        } else {
-          alert("Ungültige Szene-ID. Bitte gib eine gültige nächste Szene-ID ein.");
-        }
-      }
-
-      return React.createElement("div", { className: "app-container" },
-        // Tabs
-        React.createElement("div", { className: "tabs" },
-          ["play", "edit", "generate"].map(t =>
-            React.createElement("button", {
-              key: t,
-              onClick: () => setTab(t),
-              className: tab === t ? "active-tab" : ""
-            }, t === "play" ? "Spielen" : t === "edit" ? "Editor" : "KI-Generieren")
-          )
-        ),
-
-        // Play Mode
-        tab === "play" && React.createElement("div", { className: "play-mode" },
-          React.createElement("textarea", {
-            readOnly: true,
-            value: scene.text,
-            className: "large-scene-textarea",
-            rows: 10 // Makes it larger by default
-          }),
-          React.createElement("input", {
-            value: userInput,
-            onChange: e => setUserInput(e.target.value),
-            placeholder: "Gib die nächste Szene-ID ein",
-            className: "user-input"
-          }),
-          React.createElement("button", { onClick: handleUserInput, className: "submit-input-btn" }, "Weiter"),
-          React.createElement("button", { onClick: resetGame, className: "reset-btn" }, "Neustart")
-        ),
-
-        // Edit Mode
-        tab === "edit" && React.createElement("div", { className: "edit-mode" },
-          React.createElement("input", {
-            value: newSceneId,
-            onChange: e => setNewSceneId(e.target.value),
-            placeholder: "Neue Szene-ID",
-            className: "new-scene-input"
-          }),
-          React.createElement("button", { onClick: addScene, className: "add-scene-btn" }, "Szene hinzufügen"),
-          Object.keys(story.scenes).map(id => React.createElement("div", { key: id, className: "scene-editor" },
-            React.createElement("h3", null, id),
-            React.createElement("textarea", {
-              value: story.scenes[id].text,
-              onChange: e => updateScene(id, e.target.value),
-              className: "scene-textarea"
-            }),
-            React.createElement("input", { placeholder: "Antworttext", id: `choice-text-${id}`, className: "choice-input" }),
-            React.createElement("input", { placeholder: "Nächste Szene-ID", id: `choice-next-${id}`, className: "choice-input" }),
-            React.createElement("button", {
-              onClick: () => {
-                const t = document.getElementById(`choice-text-${id}`).value;
-                const n = document.getElementById(`choice-next-${id}`).value;
-                addChoice(id, t, n);
-              },
-              className: "add-choice-btn"
-            }, "Antwort hinzufügen"),
-            React.createElement("button", { onClick: () => deleteScene(id), className: "delete-scene-btn" }, "Szene löschen")
-          ))
-        ),
-
-        // Generate Mode
-        tab === "generate" && React.createElement("div", { className: "generate-mode" },
-          React.createElement("textarea", {
-            value: prompt,
-            onChange: e => setPrompt(e.target.value),
-            placeholder: "Kundenwunsch z.B. 'Fantasy mit Drachen'",
-            className: "prompt-textarea"
-          }),
-          React.createElement("button", { onClick: generateStory, disabled: generating, className: "generate-btn" },
-            generating ? "Generiere..." : "Story generieren"
-          )
-        )
-      );
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #fdfbfb, #ebedee);
+      color: #333;
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
-  </script>
+    header {
+      text-align: center;
+      padding: 1rem 0;
+      background: #4a90e2;
+      color: white;
+    }
+
+    header h1 {
+      margin: 0;
+      font-weight: 700;
+    }
+
+    header p {
+      margin: 0.25rem 0 0;
+      font-weight: 400;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 1rem;
+    }
+
+    /* Optional fade-in animation for AI cards */
+    .fade-in {
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Interaktive AI Story Engine</h1>
+    <p>Erstelle und spiele deine Geschichten mit KI-Unterstützung</p>
+  </header>
+
+  <main id="root"></main>
+
+  <!-- React App Script -->
+  <script type="text/javascript" src="app.js"></script>
 </body>
 </html>
