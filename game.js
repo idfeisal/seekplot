@@ -32,7 +32,7 @@ function App() {
       return newHistory;
     });
 
-    try {
+   try {
       const response = await fetch("http://localhost:3000/generate-story", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
