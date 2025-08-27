@@ -1,88 +1,44 @@
 const { useState, useEffect } = React;
 
 function App() {
-  const [story, setStory] = useState(() => {
-    const saved = localStorage.getItem("storyData");
-    console.log("Loaded storyData:", saved);
-    return saved ? JSON.parse(saved) : {
-      start: "intro",
-      scenes: {
-        intro: { text: "Willkommen! Erstelle oder spiele deine Story.", choices: [] }
-      }
-    };
+  // Initialize story history from localStorage or default
+  const [storyHistory, setStoryHistory] = useState(() => {
+    const saved = localStorage.getItem("storyHistory");
+    console.log("Loaded storyHistory:", saved);
+    return saved
+      ? JSON.parse(saved)
+      : [{ id: Date.now(), type: "ai", text: "Willkommen! Starte deine Geschichte, indem du etwas eingibst. Zum Beispiel: 'Ich betrete einen Wald.'" }];
   });
 
-  const [currentScene, setCurrentScene] = useState(story.start);
-  const [tab, setTab] = useState("play");
-  const [newSceneId, setNewSceneId] = useState("");
   const [prompt, setPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
 
+  // Persist story history to localStorage
   useEffect(() => {
-    console.log("Saving storyData:", story);
-    localStorage.setItem("storyData", JSON.stringify(story));
-  }, [story]);
+    console.log("Saving storyHistory:", storyHistory);
+    localStorage.setItem("storyHistory", JSON.stringify(storyHistory));
+  }, [storyHistory]);
 
-  const scene = story.scenes[currentScene] || { text: "Unbekannte Szene", choices: [] };
-
-  function addScene() {
-    if (!newSceneId) {
-      alert("Bitte gib eine Szene-ID ein.");
+  // Handle user input submission
+  async function submitInput() {
+    if (!prompt.trim()) {
+      console.log("Empty input");
+      alert("Bitte gib etwas ein.");
       return;
     }
-    setStory(prev => ({
-      ...prev,
-      scenes: { ...prev.scenes, [newSceneId]: { text: "", choices: [] } }
-    }));
-    setNewSceneId("");
-  }
-
-  function deleteScene(sceneId) {
-    if (sceneId === story.start) {
-      alert("Die Startszene kann nicht gelöscht werden.");
-      return;
-    }
-    const newScenes = { ...story.scenes };
-    delete newScenes[sceneId];
-    setStory({ ...story, scenes: newScenes });
-    if (currentScene === sceneId) setCurrentScene(story.start);
-  }
-
-  function updateScene(sceneId, text) {
-    setStory(prev => ({
-      ...prev,
-      scenes: { ...prev.scenes, [sceneId]: { ...prev.scenes[sceneId], text } }
-    }));
-  }
-
-  function addChoice(sceneId, choiceText, nextScene) {
-    if (!choiceText || !nextScene) {
-      alert("Bitte gib Text und nächste Szene ein.");
-      return;
-    }
-    setStory(prev => ({
-      ...prev,
-      scenes: {
-        ...prev.scenes,
-        [sceneId]: {
-          ...prev.scenes[sceneId],
-          choices: [...(prev.scenes[sceneId].choices || []), { text: choiceText, next: nextScene }]
-        }
-      }
-    }));
-  }
-
-  async function generateStory() {
-    if (!prompt) {
-      alert("Bitte gib einen Kundenwunsch ein.");
-      return;
-    }
-
-    console.log("Sending prompt to API:", prompt);
+    console.log("Submitting prompt:", prompt);
     setGenerating(true);
 
+    // Add user input to history
+    setStoryHistory((prev) => {
+      const newHistory = [...prev, { id: Date.now(), type: "user", text: prompt }];
+      console.log("Added user input:", newHistory);
+      return newHistory;
+    });
+
+    // Send prompt to API
     try {
-      const response = await fetch("http://localhost:3000/generate-story", {
+      const response = await fetch("http://localhost:3000", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
@@ -92,136 +48,82 @@ function App() {
       const data = await response.json();
       console.log("API response:", data);
 
-      if (data.story && data.story.start && data.story.scenes) {
-        setStory(data.story);
-        setCurrentScene(data.story.start);
-        console.log("Updated story:", data.story);
-        alert("Story generiert!");
-      } else {
-        throw new Error("Ungültige Antwort: 'story' fehlt oder ist ungültig");
-      }
+      const aiResponse = data.storyText || "🤖 AI: Keine Antwort vom Server erhalten.";
+      setStoryHistory((prev) => {
+        const newHistory = [...prev, { id: Date.now() + 1, type: "ai", text: aiResponse }];
+        console.log("Added AI response:", newHistory);
+        return newHistory;
+      });
     } catch (error) {
       console.error("API Fehler:", error);
-      alert(`Fehler beim Generieren: ${error.message}`);
+      const errorResponse = `🤖 Fehler: Konnte nicht antworten (${error.message}).`;
+      setStoryHistory((prev) => {
+        const newHistory = [...prev, { id: Date.now() + 1, type: "ai", text: errorResponse }];
+        console.log("Added error response:", newHistory);
+        return newHistory;
+      });
     }
 
     setPrompt("");
     setGenerating(false);
   }
 
-  return (
-    React.createElement("div", { className: "container" },
-      React.createElement("div", { className: "flex mb-4 gap-2" },
-        ["play", "edit", "generate"].map(t =>
-          React.createElement("button", {
-            key: t,
-            onClick: () => setTab(t),
-            className: "tab-button " + (tab === t ? "active" : "inactive")
-          }, t === "play" ? "Spielen" : t === "edit" ? "Editor" : "KI-Generieren")
-        ),
-        React.createElement("button", {
-          onClick: () => {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(story));
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", "story.json");
-            document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
-          },
-          className: "action-button"
-        }, "Export"),
-        React.createElement("input", {
-          type: "file",
-          accept: ".json",
-          onChange: e => {
-            const fileReader = new FileReader();
-            fileReader.onload = event => {
-              const importedStory = JSON.parse(event.target.result);
-              setStory(importedStory);
-              setCurrentScene(importedStory.start);
-            };
-            fileReader.readAsText(e.target.files[0]);
-          },
-          className: "action-button"
-        })
-      ),
+  // Reset story
+  function resetStory() {
+    console.log("Resetting story");
+    setStoryHistory([{ id: Date.now(), type: "ai", text: "Willkommen! Starte deine Geschichte, indem du etwas eingibst. Zum Beispiel: 'Ich betrete einen Wald.'" }]);
+    setPrompt("");
+  }
 
-      tab === "play" &&
-        React.createElement("div", null,
-          React.createElement("p", { className: "scene-text" }, scene.text),
-          scene.choices.map((choice, index) =>
-            React.createElement("button", {
-              key: index,
-              onClick: () => setCurrentScene(choice.next),
-              className: "choice-button"
-            }, choice.text)
-          )
-        ),
-
-      tab === "edit" &&
-        React.createElement("div", null,
-          React.createElement("h2", { className: "font-bold mb-2" }, "Editor"),
-          React.createElement("div", { className: "editor-section" },
-            React.createElement("input", {
-              value: newSceneId,
-              onChange: e => setNewSceneId(e.target.value),
-              placeholder: "Neue Szene-ID",
-              className: "editor-input"
-            }),
-            React.createElement("button", { onClick: addScene, className: "action-button" }, "Szene hinzufügen")
-          ),
-          Object.keys(story.scenes).map(sceneId =>
-            React.createElement("div", { key: sceneId, className: "editor-section" },
-              React.createElement("h3", null, sceneId),
-              React.createElement("textarea", {
-                value: story.scenes[sceneId].text,
-                onChange: e => updateScene(sceneId, e.target.value),
-                className: "editor-input"
-              }),
-              React.createElement("div", null,
-                React.createElement("input", {
-                  placeholder: "Antworttext",
-                  className: "editor-input",
-                  id: "choice-text-" + sceneId
-                }),
-                React.createElement("input", {
-                  placeholder: "Nächste Szene-ID",
-                  className: "editor-input",
-                  id: "choice-next-" + sceneId
-                }),
-                React.createElement("button", {
-                  onClick: () => {
-                    const text = document.getElementById("choice-text-" + sceneId).value;
-                    const next = document.getElementById("choice-next-" + sceneId).value;
-                    addChoice(sceneId, text, next);
-                  },
-                  className: "action-button"
-                }, "Antwort hinzufügen")
-              ),
-              React.createElement("button", {
-                onClick: () => deleteScene(sceneId),
-                className: "action-button delete-button"
-              }, "Szene löschen")
-            )
-          )
-        ),
-
-      tab === "generate" &&
-        React.createElement("div", null,
-          React.createElement("h2", { className: "font-bold mb-2" }, "Generiere Story basierend auf Kundenwunsch"),
-          React.createElement("textarea", {
-            value: prompt,
-            onChange: e => setPrompt(e.target.value),
-            placeholder: "z.B. 'Eine Fantasy-Geschichte mit einem Drachen und einem mutigen Helden'",
-            className: "textarea"
-          }),
-          React.createElement("button", {
-            onClick: generateStory,
-            disabled: generating,
-            className: "generate-button " + (generating ? "disabled" : "enabled")
-          }, generating ? "Generiere..." : "Story generieren")
+  return React.createElement(
+    "div",
+    { className: "app-container" },
+    // Story display
+    React.createElement(
+      "div",
+      { className: "story-container" },
+      storyHistory.map((entry) =>
+        React.createElement(
+          "div",
+          { key: entry.id, className: `story-entry ${entry.type} fade-in` },
+          React.createElement("p", { className: "story-text" }, entry.text)
         )
+      )
+    ),
+    // Input area
+    React.createElement(
+      "div",
+      { className: "input-container" },
+      React.createElement("textarea", {
+        className: "prompt-textarea",
+        value: prompt,
+        onChange: (e) => {
+          console.log("Prompt changed:", e.target.value);
+          setPrompt(e.target.value);
+        },
+        placeholder: "Was machst du als Nächstes? (z.B. 'Ich öffne die Tür')",
+        "aria-label": "Deinen nächsten Story-Schritt eingeben",
+        disabled: generating,
+      }),
+      React.createElement(
+        "button",
+        {
+          onClick: submitInput,
+          className: `submit-btn ${generating ? "disabled" : ""}`,
+          disabled: generating,
+          "aria-label": generating ? "Story wird generiert" : "Eingabe senden",
+        },
+        generating ? "Generiere..." : "Eingabe senden"
+      ),
+      React.createElement(
+        "button",
+        {
+          onClick: resetStory,
+          className: "reset-btn",
+          "aria-label": "Geschichte zurücksetzen",
+        },
+        "Geschichte zurücksetzen"
+      )
     )
   );
 }
