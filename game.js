@@ -71,7 +71,7 @@ function App() {
   }
 
   return (
-    <div className="app-container">
+   <div className="app-container">
       <div className="story-container">
         {storyHistory.map((entry) => (
           <div key={entry.id} className={`story-entry ${entry.type} fade-in`}>
