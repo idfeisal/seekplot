@@ -2,36 +2,44 @@ const { useState, useEffect } = React;
 
 function App() {
   const [storyHistory, setStoryHistory] = useState(() => {
-    const saved = localStorage.getItem("storyHistory");
-    console.log("Loaded storyHistory:", saved);
-    return saved
-      ? JSON.parse(saved)
-      : [{ id: Date.now(), type: "ai", text: "Willkommen! Starte deine Geschichte, indem du etwas eingibst. Zum Beispiel: 'Ich betrete einen Wald.'" }];
+    try {
+      const saved = localStorage.getItem("storyHistory");
+      console.log("Loaded storyHistory from localStorage:", saved);
+      return saved
+        ? JSON.parse(saved)
+        : [{ id: Date.now(), type: "ai", text: "Willkommen! Starte deine Geschichte, indem du etwas eingibst. Zum Beispiel: 'Ich betrete einen Wald.'" }];
+    } catch (error) {
+      console.error("Failed to parse storyHistory from localStorage:", error);
+      return [{ id: Date.now(), type: "ai", text: "Willkommen! Starte deine Geschichte, indem du etwas eingibst. Zum Beispiel: 'Ich betrete einen Wald.'" }];
+    }
   });
 
   const [prompt, setPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    console.log("Saving storyHistory:", storyHistory);
-    localStorage.setItem("storyHistory", JSON.stringify(storyHistory));
+    try {
+      console.log("Saving storyHistory to localStorage:", storyHistory);
+      localStorage.setItem("storyHistory", JSON.stringify(storyHistory));
+    } catch (error) {
+      console.error("Failed to save storyHistory to localStorage:", error);
+    }
   }, [storyHistory]);
 
   async function submitInput() {
     if (!prompt.trim()) {
-      console.log("Empty input");
+      console.log("Empty input detected");
       alert("Bitte gib etwas ein.");
       return;
     }
+
     console.log("Submitting prompt:", prompt);
     setGenerating(true);
+    setError(null);
 
     const newUserEntry = { id: Date.now(), type: "user", text: prompt };
-    setStoryHistory((prev) => {
-      const newHistory = [...prev, newUserEntry];
-      console.log("Added user input:", newHistory);
-      return newHistory;
-    });
+    setStoryHistory(prev => [...prev, newUserEntry]);
 
     try {
       const response = await fetch("http://localhost:3000/generate-story", {
@@ -40,24 +48,20 @@ function App() {
         body: JSON.stringify({ prompt, history: storyHistory }),
       });
 
-      if (!response.ok) throw new Error(`HTTP Fehler: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
+      }
+
       const data = await response.json();
       console.log("API response:", data);
 
       const aiResponse = data.story || "🤖 AI: Keine gültige Antwort vom Server erhalten.";
-      setStoryHistory((prev) => {
-        const newHistory = [...prev, { id: Date.now() + 1, type: "ai", text: aiResponse }];
-        console.log("Added AI response:", newHistory);
-        return newHistory;
-      });
+      setStoryHistory(prev => [...prev, { id: Date.now() + 1, type: "ai", text: aiResponse }]);
     } catch (error) {
-      console.error("API Fehler:", error);
+      console.error("Fetch error:", error);
       const errorResponse = `🤖 Fehler: Konnte nicht antworten (${error.message}).`;
-      setStoryHistory((prev) => {
-        const newHistory = [...prev, { id: Date.now() + 1, type: "ai", text: errorResponse }];
-        console.log("Added error response:", newHistory);
-        return newHistory;
-      });
+      setStoryHistory(prev => [...prev, { id: Date.now() + 1, type: "ai", text: errorResponse }]);
+      setError(error.message);
     }
 
     setPrompt("");
@@ -68,12 +72,14 @@ function App() {
     console.log("Resetting story");
     setStoryHistory([{ id: Date.now(), type: "ai", text: "Willkommen! Starte deine Geschichte, indem du etwas eingibst. Zum Beispiel: 'Ich betrete einen Wald.'" }]);
     setPrompt("");
+    setError(null);
   }
 
   return (
-   <div className="app-container">
+    <div className="app-container">
+      {error && <div className="error-message">{error}</div>}
       <div className="story-container">
-        {storyHistory.map((entry) => (
+        {storyHistory.map(entry => (
           <div key={entry.id} className={`story-entry ${entry.type} fade-in`}>
             <p className="story-text">{entry.text}</p>
           </div>
@@ -83,7 +89,7 @@ function App() {
         <textarea
           className="prompt-textarea"
           value={prompt}
-          onChange={(e) => {
+          onChange={e => {
             console.log("Prompt changed:", e.target.value);
             setPrompt(e.target.value);
           }}
@@ -112,7 +118,7 @@ function App() {
 }
 
 try {
-  console.log("Rendering app");
+  console.log("Rendering React app");
   ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 } catch (err) {
   console.error("Render error:", err);
